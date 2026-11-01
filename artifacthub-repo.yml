@@ -1,10 +1,7 @@
 # Artifact Hub repository metadata, pushed as
 # oci://ghcr.io/kopexa-grc/charts/mautic:artifacthub.io by the chart workflow.
-#
-# After adding the repository on artifacthub.io, set repositoryID (shown in
-# the repository settings there) to get the "Verified publisher" badge, and
-# optionally list owners (their emails must match Artifact Hub accounts).
-# repositoryID: 00000000-0000-0000-0000-000000000000
+repositoryID: c26acb09-6d78-4b91-a4a9-f434edaef74d
+# Optionally list owners (their emails must match Artifact Hub accounts):
 # owners:
 #   - name: Kopexa
 #     email: you@example.com
