@@ -75,9 +75,11 @@ jobs:
       - name: CIS Docker benchmark (dockle)
         # CIS-DI-0005: replaced by cosign signatures.
         # CIS-DI-0006: Kubernetes probes are used instead of HEALTHCHECK.
+        # .env: Mautic's shipped .env only sets APP_ENV=prod / APP_DEBUG=0
+        #       (no secrets) and is required by its bootstrap.
         run: |
           docker run --rm -v /tmp:/w "$DOCKLE_IMAGE" --input /w/image.tar \
-            --exit-code 1 --exit-level warn -i CIS-DI-0005 -i CIS-DI-0006
+            --exit-code 1 --exit-level warn -i CIS-DI-0005 -i CIS-DI-0006 -af .env
 
   build:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
