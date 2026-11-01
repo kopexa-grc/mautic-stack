@@ -32,3 +32,5 @@ In Postal: *Server → Webhooks → Add webhook*, URL
 
 If egress is restricted (`networkPolicy.egress`), allow Mautic to reach the
 Postal host on 443 for the JWKS, or configure the PEM instead.
+
+Full setup, endpoint behaviour and troubleshooting: [docs/postal.md](../../../docs/postal.md).

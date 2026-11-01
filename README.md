@@ -114,7 +114,9 @@ backup:
 Mautic supports MySQL/MariaDB only (no PostgreSQL, so no CloudNativePG).
 
 See [docs/production.md](docs/production.md) (sizing, scaling, storage,
-upgrades) and [docs/backup.md](docs/backup.md) (backup and restore).
+upgrades), [docs/backup.md](docs/backup.md) (backup and restore),
+[docs/postal.md](docs/postal.md) (sending via Postal, bounce webhooks on
+`/mailer/callback`) and [docs/sso.md](docs/sso.md) (SAML single sign-on).
 
 ## How the chart is laid out
 
