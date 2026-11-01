@@ -126,7 +126,7 @@ step "Restore into a fresh release"
 kubectl create namespace restore
 kubectl -n restore create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup
 helm install restored "$CHART" -n restore "${common[@]}" \
-  --set mautic.siteUrl="https://$RESTORED_HOST" \
+  --set mautic.siteUrl="http://$RESTORED_HOST" \
   --set web.replicaCount=0 --set worker.enabled=false --set cron.enabled=false
 # No --wait: with zero web replicas the data PVC stays Pending under
 # WaitForFirstConsumer storage classes (k3s local-path) until web starts.
@@ -174,8 +174,12 @@ grep -q 'database is empty' <<<"$init_log" \
 kubectl -n restore port-forward svc/restored-mautic 18080:80 >/dev/null 2>&1 &
 pf2=$!; trap 'kill $pf $pf2 2>/dev/null || true' EXIT
 for _ in $(seq 1 20); do curl -s -o /dev/null localhost:18080/healthz && break; sleep 1; done
-found="$(curl -s -u "admin:$ADMIN_PW" -H "Host: $RESTORED_HOST" -H 'X-Forwarded-Proto: https' \
-  "http://127.0.0.1:18080/api/contacts?search=e2e@example.com" | jq -r '.total // empty')"
+# Plain http site URL: port-forwarded requests come from 127.0.0.1, which is
+# (correctly) not a trusted proxy, so X-Forwarded-Proto would be ignored.
+resp="$(curl -s -u "admin:$ADMIN_PW" -H "Host: $RESTORED_HOST" -H 'Accept: application/json' \
+  "http://127.0.0.1:18080/api/contacts?search=e2e@example.com")"
+found="$(jq -r '.total // empty' <<<"$resp" 2>/dev/null || true)"
+[[ -n "$found" ]] || echo "$resp" | head -c 500
 [[ "$found" == 1 ]] && pass "contact and admin login survived backup + restore" || fail "restored data (total=$found)"
 
 printf '\n\033[32mAll k3s end-to-end checks passed.\033[0m\n'
