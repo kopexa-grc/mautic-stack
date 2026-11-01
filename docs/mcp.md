@@ -48,8 +48,46 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their event tree |
 | `create_email_draft` | `mcp:write` | New **unpublished** email (HTML, subject, preheader, segments) |
 | `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email |
-| `create_campaign_draft` | `mcp:write` | New **unpublished** campaign with segment source; steps are added in the campaign builder |
+| `list_campaign_step_types` | `mcp:read` | Available actions, decisions and conditions (including those of installed plugins) |
+| `describe_campaign_step_type` | `mcp:read` | Properties of a step type (names, required, choices), which steps it may follow |
+| `create_campaign_draft` | `mcp:write` | New **unpublished** campaign with segment source |
 | `update_campaign_draft` | `mcp:write` | Change name, description, segments of an unpublished campaign |
+| `set_campaign_steps` | `mcp:write` | Set the complete flow of an unpublished campaign: actions, decisions, conditions, waits, yes/no branches |
+
+### Campaign flows
+
+`set_campaign_steps` takes the flow as a list of steps. Each step has a
+`key`, a `type` and optionally a `parent` (the step it follows), a `path`
+(`yes`/`no` after a decision or condition), a `wait` and the type's
+`properties`:
+
+```json
+[
+  {"key": "welcome",  "type": "email.send", "properties": {"email": 12, "email_type": "marketing"}},
+  {"key": "opened",   "type": "email.open", "parent": "welcome"},
+  {"key": "engaged",  "type": "lead.changepoints", "parent": "opened", "path": "yes", "properties": {"points": 10}},
+  {"key": "reminder", "type": "email.send", "parent": "opened", "path": "no",
+   "wait": {"interval": 3, "unit": "d"}, "properties": {"email": 13, "email_type": "marketing"}}
+]
+```
+
+The result opens in Mautic's campaign builder like a hand-built campaign:
+
+![Campaign flow created via MCP, in the Mautic campaign builder](img/mcp-campaign-flow.png)
+
+Steps are validated the way the builder validates them:
+
+- **Properties** go through the step type's own form, as in the builder
+  modal. Required fields, allowed choices and plugin step types are checked
+  the same way.
+- **Connection rules:**
+  - no decision directly after a decision
+  - type restrictions such as `email.open` only after `email.send`
+  - the `no` path of a decision needs a `wait` (how long the contact has to act)
+- **Emails:** campaigns can only send template emails, and the user must be
+  allowed to see them.
+- **All or nothing:** an invalid flow changes nothing. A valid one
+  replaces all steps of the draft in one transaction.
 
 **Nothing is sent or published through MCP.** Write tools only create and
 change drafts. Published or already sent items are refused. A person
@@ -104,6 +142,7 @@ disabled Mautic user loses access immediately, even with a valid token.
 - create and update a draft; a published email is refused
 - `insufficient_scope` for a read-only token
 - segments, campaign drafts and statistics
+- a complete campaign flow (email → opened? → points / reminder after 3 days), the builder rules, and Mautic's campaign cron executing it
 - a restricted role that sees no contacts
 
 `test/e2e-k3s.sh` checks discovery and the 401 challenge through the HTTPS

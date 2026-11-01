@@ -22,7 +22,8 @@ cleanup() {
   docker volume rm -f "$run_id-config" "$run_id-media" >/dev/null 2>&1 || true
   docker network rm "$net" >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+# SMOKE_KEEP=1 keeps the containers for inspection (debugging).
+[[ "${SMOKE_KEEP:-}" == 1 ]] || trap cleanup EXIT
 
 docker network create "$net" >/dev/null
 docker volume create "$run_id-config" >/dev/null
@@ -261,8 +262,8 @@ jq -e '.result.serverInfo.name == "Mautic"' <<<"$init" >/dev/null && [[ -n "$MCP
   && pass "initialize (session stored in the database)" || { echo "$init"; cat /tmp/mcp-headers; fail "MCP initialize"; }
 mcp "$access" '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
 tools="$(mcp "$access" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')"
-[[ "$(jq '.result.tools | length' <<<"$tools")" == 12 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
-  && pass "tools/list: 12 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
+[[ "$(jq '.result.tools | length' <<<"$tools")" == 15 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
+  && pass "tools/list: 15 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
 call() { mcp "$1" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$2"'","arguments":'"$3"'}}'; }
 result() { jq -r '.result.content[0].text // empty' <<<"$1"; }
 found="$(call "$access" search_contacts '{"search":"bounce@example.com"}')"
@@ -294,8 +295,42 @@ camp="$(call "$access" create_campaign_draft "{\"name\":\"MCP smoke campaign\",\
 campid="$(result "$camp" | jq -r '.id // empty')"
 [[ "$campid" =~ ^[0-9]+$ ]] && jq -e --argjson id "$sid" '.segments[0].id == $id and .published == false' <<<"$(result "$(call "$access" get_campaign "{\"id\":$campid}")")" >/dev/null \
   && pass "create_campaign_draft + get_campaign (unpublished, segment source)" || { echo "$camp" | head -c 600; fail "campaign draft"; }
+types="$(result "$(call "$access" list_campaign_step_types '{}')")"
+jq -e '[.actions[].type] | index("email.send")' <<<"$types" >/dev/null && jq -e '[.decisions[].type] | index("email.open")' <<<"$types" >/dev/null \
+  && pass "list_campaign_step_types (actions, decisions, conditions)" || { echo "$types" | head -c 600; fail "step types"; }
+desc="$(result "$(call "$access" describe_campaign_step_type '{"type":"email.send"}')")"
+jq -e '[.properties[].name] | index("email")' <<<"$desc" >/dev/null && pass "describe_campaign_step_type (properties from the step form)" || { echo "$desc" | head -c 800; fail "describe step type"; }
+# Welcome email -> opened? yes: +10 points / no (after 3 days): reminder.
+flow='[{"key":"welcome","type":"email.send","properties":{"email":'"$eid"',"email_type":"marketing"}},
+       {"key":"opened","type":"email.open","parent":"welcome"},
+       {"key":"engaged","type":"lead.changepoints","parent":"opened","path":"yes","properties":{"points":10}},
+       {"key":"reminder","type":"email.send","parent":"opened","path":"no","wait":{"interval":3,"unit":"d"},"properties":{"email":'"$eid"',"email_type":"marketing"}}]'
+set_steps() { call "$access" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c . <<<"$1")}"; }
+saved="$(set_steps "$flow")"
+jq -e '.steps | length == 4' <<<"$(result "$saved")" >/dev/null || { echo "$saved" | head -c 1200; fail "set_campaign_steps"; }
+camp_api="$(api "$base/api/campaigns/$campid")"
+jq -e '(.campaign.events | length == 4)
+  and ([.campaign.events[] | select(.name != null and .type == "email.send" and .decisionPath == "no" and .triggerMode == "interval" and .triggerInterval == 3)] | length == 1)
+  and ([.campaign.canvasSettings.nodes[].id | tostring | select(startswith("new"))] | length == 0)
+  and (.campaign.canvasSettings.connections | length == 4)
+  and (.campaign.isPublished == false)' <<<"$camp_api" >/dev/null \
+  && pass "set_campaign_steps: 4 steps with yes/no branches and wait, builder canvas, still unpublished" || { jq -c '.campaign | {events: [.events[] | {name,type,decisionPath,triggerMode,triggerInterval,parent: .parent.id}], canvasSettings}' <<<"$camp_api" | head -c 1500; fail "campaign flow not stored correctly"; }
+bad="$(set_steps '[{"key":"a","type":"email.send","properties":{"email":'"$eid"'}},{"key":"b","type":"email.open","parent":"a"},{"key":"c","type":"email.send","parent":"b","path":"no","properties":{"email":'"$eid"'}}]')"
+grep -q 'set \\"wait\\"\|set "wait"' <<<"$bad$(result "$bad")" && pass "flow rules enforced (no-path of a decision needs a wait)" || { echo "$bad" | head -c 600; fail "missing wait accepted"; }
+bad="$(set_steps '[{"key":"x","type":"email.open"}]')"
+grep -q 'cannot be the first step' <<<"$(result "$bad")" && pass "flow rules enforced (email.open must follow email.send)" || { echo "$bad" | head -c 600; fail "email.open as first step accepted"; }
+[[ "$(api "$base/api/campaigns/$campid" | jq '.campaign.events | length')" == 4 ]] && pass "rejected flows leave the saved one untouched" || fail "rejected flow changed the campaign"
+# The flow really runs: publish it (a human step), add a contact, run Mautic's campaign cron.
+api -X POST "$base/api/contacts/new" -d email=flow@example.com -d firstname=Flow >/dev/null
+flow_cid="$(api "$base/api/contacts?search=flow@example.com" | jq -r '.contacts | keys[0]')"
+api -X POST "$base/api/segments/$sid/contact/$flow_cid/add" >/dev/null
+api -X PATCH "$base/api/campaigns/$campid/edit" -d isPublished=1 >/dev/null
+docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:update -i "$campid" >/dev/null 2>&1
+trigger="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:trigger -i "$campid" 2>&1)"
+grep -qE '[1-9][0-9]* total events? (were|was) executed' <<<"$trigger" \
+  && pass "Mautic executes the flow (campaigns:trigger: $(grep -oE '[0-9]+ total events? (were|was) executed' <<<"$trigger" | head -1))" || { echo "$trigger" | tail -15; fail "campaign flow did not run"; }
 stats="$(result "$(call "$access" get_email_stats "{\"id\":$eid}")")"
-jq -e '.sent == 0 and (.links | type == "array")' <<<"$stats" >/dev/null && pass "get_email_stats" || { echo "$stats"; fail "get_email_stats"; }
+jq -e '.sent == 1 and (.links | type == "array")' <<<"$stats" >/dev/null && pass "get_email_stats (the campaign sent the welcome email)" || { echo "$stats"; fail "get_email_stats"; }
 # A user whose role may only work on their own emails sees no contacts.
 rid="$(api -X POST "$base/api/roles/new" -d name='AI Editor (smoke)' -d isAdmin=0 \
   -d 'rawPermissions[email:emails][]=viewown' -d 'rawPermissions[email:emails][]=create' -d 'rawPermissions[email:emails][]=editown' | jq -r '.role.id')"
@@ -337,3 +372,4 @@ grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && 
 
 v="$(docker run --rm "$IMG" version)"
 pass "mautic version $v"
+echo "campaign=$campid base=$base" > "${SMOKE_INFO:-/dev/null}"
