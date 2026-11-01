@@ -1,0 +1,88 @@
+{#
+  Kopexa email theme — values from https://brand.kopexa.com (tokens.json).
+  Navy #070B14 · Route Blue #0E9DFD (accent only) · Action Blue #006CB8
+  (buttons with white text, small accent text on white) · text on white
+  #10253D · Supporting #B9C8D7 (secondary text on Navy).
+  Radii: controls 8px, panels 14px. 4px spacing grid.
+
+  The t-* classes are the tokens Mautic's GrapesJS builder applies to newly
+  dropped blocks, so content built in the editor follows the brand too.
+#}
+<mjml lang="de">
+  <mj-head>
+    <mj-title>{subject}</mj-title>
+    <!-- Brand fonts inline (no external stylesheet: avoids spam-filter
+         penalties for external CSS; <link> is unsupported in most clients).
+         Clients without web fonts use the system fallbacks below. -->
+    <mj-style>
+      @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-style: normal; src: url('{{ getAssetUrl('themes/'~template~'/assets/fonts/IBM-Plex-Sans-600.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; src: url('{{ getAssetUrl('themes/'~template~'/assets/fonts/Inter-400.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; src: url('{{ getAssetUrl('themes/'~template~'/assets/fonts/Inter-600.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Geist Mono'; font-weight: 400; font-style: normal; src: url('{{ getAssetUrl('themes/'~template~'/assets/fonts/Geist-Mono-400.ttf', null, null, true) }}') format('truetype'); }
+    </mj-style>
+    <mj-raw>
+      <meta name="color-scheme" content="light only">
+      <meta name="supported-color-schemes" content="light only">
+    </mj-raw>
+    <mj-attributes>
+      <mj-all font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text color="#10253D" font-size="16px" line-height="26px" padding="0 32px 16px 32px" />
+      <mj-button font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="16px" border-radius="8px" inner-padding="14px 24px" padding="8px 32px 24px 32px" align="left" />
+      <mj-image padding="0" />
+
+      <!-- Builder tokens (GrapesJS) -->
+      <mj-class name="t-body" font-size="16px" line-height="26px" color="#10253D" />
+      <mj-class name="t-lead" font-size="19px" line-height="30px" color="#10253D" />
+      <mj-class name="t-h1" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="32px" line-height="40px" color="#070B14" />
+      <mj-class name="t-h2" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="26px" line-height="34px" color="#070B14" />
+      <mj-class name="t-h3" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="21px" line-height="28px" color="#070B14" />
+      <mj-class name="t-h4" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#070B14" />
+      <mj-class name="t-label" font-family="'Geist Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12px" line-height="16px" letter-spacing="0.08em" color="#006CB8" />
+      <mj-class name="t-btn" font-weight="600" border-radius="8px" inner-padding="14px 24px" />
+      <mj-class name="t-btn-primary" background-color="#006CB8" color="#FFFFFF" />
+      <mj-class name="t-btn-secondary" background-color="#FFFFFF" color="#006CB8" border="1px solid #006CB8" />
+      <mj-class name="t-section" padding="0" />
+      <mj-class name="t-surface-1" background-color="#FFFFFF" />
+    </mj-attributes>
+    <mj-style>
+      a { color: #006CB8; }
+      .k-footer a { color: #B9C8D7 !important; text-decoration: underline; }
+      @media only screen and (max-width: 480px) {
+        .k-panel { border-radius: 0 !important; }
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#070B14" width="640px">
+    <!-- Header: original logo (white) on Navy -->
+    <mj-section padding="32px 32px 24px 32px">
+      <mj-column>
+        <mj-image src="{{ getAssetUrl('themes/'~template~'/assets/logo-light.png', null, null, true) }}" alt="Kopexa" width="140px" height="36px" align="left" href="https://www.kopexa.com/de" />
+      </mj-column>
+    </mj-section>
+
+    <!-- Content panel -->
+    <mj-wrapper mj-class="t-surface-1" css-class="k-panel" border-radius="14px" padding="40px 0 16px 0">
+      <mj-section mj-class="t-section t-surface-1">
+        <mj-column>
+          <mj-text mj-class="t-label" padding="0 32px 12px 32px">NEU IN KOPEXA</mj-text>
+          <mj-text mj-class="t-body" padding="0 32px 4px 32px">Wenn Risiken auf der Liste stehen bleiben.</mj-text>
+          <mj-text mj-class="t-h1" padding="0 32px 24px 32px"><h1 style="margin:0;font:inherit;color:inherit;">Bring die wichtigen Maßnahmen ins Ziel.</h1></mj-text>
+          <mj-text mj-class="t-body">Hallo {contactfield=firstname|zusammen},</mj-text>
+          <mj-text mj-class="t-body">Dein Team weiß, was zuerst dran ist und wer den nächsten Schritt übernimmt. Hier steht der Inhalt deiner Nachricht: ein klarer Gedanke pro Absatz, ungefähr 60–70 Zeichen pro Zeile.</mj-text>
+          <mj-button mj-class="t-btn t-btn-primary" href="https://www.kopexa.com/de">Jetzt ansehen</mj-button>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Footer on Navy: claim, legal information, unsubscribe -->
+    <mj-section padding="32px 32px 8px 32px" css-class="k-footer">
+      <mj-column>
+        <mj-text font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#FFFFFF" padding="0 0 16px 0">Dein Weg zu mehr Sicherheit.</mj-text>
+        <mj-text color="#B9C8D7" font-size="13px" line-height="20px" padding="0 0 8px 0">Kopexa GmbH · Schauenburgerstraße 116 · 24118 Kiel</mj-text>
+        <mj-text color="#B9C8D7" font-size="13px" line-height="20px" padding="0 0 16px 0" css-class="k-footer"><a href="https://www.kopexa.com/de">kopexa.com</a> · <a href="https://kopexa.com/de/legal/imprint">Impressum</a> · <a href="https://kopexa.com/de/legal/privacy">Datenschutz</a></mj-text>
+        <mj-text color="#B9C8D7" font-size="13px" line-height="20px" padding="0 0 32px 0" css-class="k-footer">{unsubscribe_text} · {webview_text}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

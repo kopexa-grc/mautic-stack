@@ -33,7 +33,10 @@ RUN composer create-project --no-progress --no-dev \
 # bundles (image/extensions/*, installed from a local path repository).
 COPY plugins.txt /build/plugins.txt
 COPY extensions/ /build/extensions/
-RUN cd mautic \
+# QA tooling (qa/) stays in the repository: themes are served from the web
+# root, so nothing but the theme itself may be installed.
+RUN rm -rf /build/extensions/*/qa \
+ && cd mautic \
  && composer config repositories.kopexa '{"type": "path", "url": "/build/extensions/*", "options": {"symlink": false}}' \
  && { grep -vE '^\s*(#|$)' /build/plugins.txt; \
       for f in /build/extensions/*/composer.json; do \

@@ -1,0 +1,3 @@
+# Theme QA tooling is not part of the image.
+extensions/*/qa/node_modules
+extensions/*/qa/dist

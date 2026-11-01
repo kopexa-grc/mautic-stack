@@ -1,0 +1,8 @@
+{
+  "name": "Kopexa",
+  "author": "Kopexa",
+  "authorUrl": "https://kopexa.com",
+  "builder": ["grapesjsbuilder"],
+  "features": ["email"],
+  "tags": ["newsletter", "transactional"]
+}

@@ -108,6 +108,12 @@ if grep -q 'name="_username"' /tmp/mautic-smoke-page.html || [[ "$final" != 200*
 fi
 pass "admin login works"
 
+echo "Kopexa email theme"
+[[ "$(code /themes/kopexa/assets/logo-light.png)" == 200 ]] && pass "theme assets served" || fail "theme assets not served"
+[[ "$(code /themes/kopexa/thumbnail.png)" == 200 ]] && pass "theme thumbnail present" || fail "theme thumbnail missing"
+[[ "$(code /themes/kopexa/qa/package.json)" =~ ^(403|404)$ ]] && pass "theme QA tooling not shipped" || fail "theme QA files reachable"
+grep -q '^kopexa/mautic-theme-kopexa ' <<<"$(docker run --rm "$IMG" plugins)" && pass "theme installed via Composer" || fail "theme not installed"
+
 echo "Postal bounce webhook (kopexa/mautic-postal-bundle)"
 api() { curl -s -u 'admin:Sm0ke-Test-Passw0rd!' -H 'Accept: application/json' "$@"; }
 cid="$(api -X POST "$base/api/contacts/new" -d email=bounce@example.com | jq -r '.contact.id')"

@@ -1,0 +1,15 @@
+{
+  "name": "kopexa-mautic-theme-qa",
+  "private": true,
+  "type": "module",
+  "description": "Quality gate for the Kopexa Mautic email theme",
+  "scripts": {
+    "render": "node render.mjs",
+    "check": "node check.mjs",
+    "screenshots": "node screenshots.mjs"
+  },
+  "devDependencies": {
+    "mjml": "4.15.3",
+    "playwright": "1.64.1"
+  }
+}

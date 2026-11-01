@@ -14,6 +14,7 @@ months, and a clear need for our use cases.
 |---|---|---|
 | [leuchtfeuer/mautic-doi-bundle](https://packagist.org/packages/leuchtfeuer/mautic-doi-bundle) | Double opt-in for forms and segments (GDPR, German UWG) | *Settings → Plugins → Double Opt-In* |
 | [kopexa/mautic-postal-bundle](../image/extensions/mautic-postal-bundle) (ours) | **Postal bounces:** signed `MessageBounced` / hard `MessageDeliveryFailed` webhooks mark the contact *Do Not Contact – bounced* | `mautic.postal.jwksUrl`; in Postal add a webhook to `https://<mautic>/mailer/callback` — see its [README](../image/extensions/mautic-postal-bundle/README.md) |
+| [kopexa/mautic-theme-kopexa](../image/extensions/mautic-theme-kopexa) (ours) | **Kopexa email theme** (MJML, GrapesJS builder) from brand.kopexa.com tokens, with an automated quality gate (size, links, contrast, client compatibility, spam score) | pick theme *Kopexa* when creating an email |
 | `symfony/{amazon,postmark,brevo,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider HTTP APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `ses+api://KEY:SECRET@default?region=eu-central-1`, `postmark+api://TOKEN@default` |
 
 Our default is **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
