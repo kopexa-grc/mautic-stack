@@ -52,6 +52,18 @@ const PARAMETER_MAP = [
     'MAUTIC_MESSENGER_DSN_EMAIL'  => ['messenger_dsn_email', 'string'],
     'MAUTIC_MESSENGER_DSN_HIT'    => ['messenger_dsn_hit', 'string'],
     'MAUTIC_MESSENGER_DSN_FAILED' => ['messenger_dsn_failed', 'string'],
+    // SAML SSO. Mautic stores metadata/certificate/key base64-encoded; plain
+    // XML / PEM (e.g. from a mounted ConfigMap or TLS Secret) is encoded here.
+    'MAUTIC_SAML_IDP_METADATA'            => ['saml_idp_metadata', 'base64'],
+    'MAUTIC_SAML_IDP_ENTITY_ID'           => ['saml_idp_entity_id', 'string'],
+    'MAUTIC_SAML_IDP_OWN_CERTIFICATE'     => ['saml_idp_own_certificate', 'base64'],
+    'MAUTIC_SAML_IDP_OWN_PRIVATE_KEY'     => ['saml_idp_own_private_key', 'base64'],
+    'MAUTIC_SAML_IDP_OWN_PASSWORD'        => ['saml_idp_own_password', 'string'],
+    'MAUTIC_SAML_IDP_EMAIL_ATTRIBUTE'     => ['saml_idp_email_attribute', 'string'],
+    'MAUTIC_SAML_IDP_USERNAME_ATTRIBUTE'  => ['saml_idp_username_attribute', 'string'],
+    'MAUTIC_SAML_IDP_FIRSTNAME_ATTRIBUTE' => ['saml_idp_firstname_attribute', 'string'],
+    'MAUTIC_SAML_IDP_LASTNAME_ATTRIBUTE'  => ['saml_idp_lastname_attribute', 'string'],
+    'MAUTIC_SAML_IDP_DEFAULT_ROLE'        => ['saml_idp_default_role', 'string'],
 ];
 
 function logmsg(string $msg): void
@@ -93,9 +105,12 @@ function buildParameters(): array
         if (null === $value) {
             continue;
         }
-        $params[$key] = 'list' === $type
-            ? array_values(array_filter(preg_split('/[\s,]+/', $value) ?: []))
-            : $value;
+        $params[$key] = match ($type) {
+            'list'   => array_values(array_filter(preg_split('/[\s,]+/', $value) ?: [])),
+            // Already base64 (as Mautic stores it) is kept; XML/PEM is encoded.
+            'base64' => preg_match('/^\s*(<|-----BEGIN)/', $value) ? base64_encode(trim($value)) : trim($value),
+            default  => $value,
+        };
     }
 
     $extra = env('MAUTIC_CONFIG_PARAMETERS');
