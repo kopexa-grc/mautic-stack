@@ -30,13 +30,18 @@ RUN composer create-project --no-progress --no-dev \
       "mautic/recommended-project:${MAUTIC_VERSION}" mautic
 
 WORKDIR /build/mautic
+# Writable directories are moved out of the tree at the end: COPY --chown only
+# applies to directories it creates, not to ones that already exist.
 RUN npm ci --no-audit --no-fund \
  && php bin/console mautic:assets:generate \
  && find node_modules -mindepth 1 -maxdepth 1 \
       -not \( -name jquery -o -name vimeo-froogaloop2 \) -exec rm -rf {} + \
  && rm -rf var/cache/* var/logs/* var/tmp/* \
  && mkdir -p config var/cache var/logs var/tmp var/spool \
-             docroot/media/files docroot/media/images
+             docroot/media/files docroot/media/images \
+ && mkdir -p /build/writable/media \
+ && mv config var /build/writable/ \
+ && mv docroot/media/files docroot/media/images /build/writable/media/
 
 # ---------------------------------------------------------------------------
 FROM ${BASE_IMAGE}:${PHP_VERSION}
@@ -52,10 +57,10 @@ LABEL org.opencontainers.image.title="mautic" \
 # Code is owned by root and read-only for the runtime user …
 COPY --from=build --chown=0:0 /build/mautic /app
 # … except the directories Mautic writes to.
-COPY --from=build --chown=65532:65532 /build/mautic/config /app/config
-COPY --from=build --chown=65532:65532 /build/mautic/var /app/var
-COPY --from=build --chown=65532:65532 /build/mautic/docroot/media/files /app/docroot/media/files
-COPY --from=build --chown=65532:65532 /build/mautic/docroot/media/images /app/docroot/media/images
+COPY --from=build --chown=65532:65532 /build/writable/config /app/config
+COPY --from=build --chown=65532:65532 /build/writable/var /app/var
+COPY --from=build --chown=65532:65532 /build/writable/media/files /app/docroot/media/files
+COPY --from=build --chown=65532:65532 /build/writable/media/images /app/docroot/media/images
 COPY rootfs/ /
 
 ENV APACHE_DOCUMENT_ROOT=/app/docroot \

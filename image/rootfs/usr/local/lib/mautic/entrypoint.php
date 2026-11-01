@@ -205,7 +205,9 @@ function ensureLocalConfig(): void
     // expected to be a persistent volume. Make sure it is writable.
     $dir = APP_ROOT.'/config';
     if (!is_dir($dir) || !is_writable($dir)) {
-        fail("$dir must be a writable directory (mount a persistent volume)");
+        $stat = @stat($dir);
+        fail(sprintf('%s must be a writable directory (mount a persistent volume); owner uid=%s mode=%s, running as uid=%d',
+            $dir, $stat['uid'] ?? '?', isset($stat['mode']) ? decoct($stat['mode'] & 0o7777) : '?', posix_getuid()));
     }
 }
 
@@ -213,6 +215,16 @@ function init(array $params, array $environment): void
 {
     ensureLocalConfig();
     $pdo = waitForDb($params, (int) env('MAUTIC_DB_WAIT_TIMEOUT', '300'));
+
+    // Several replicas may start at once: serialise install + migrations
+    // with a MySQL advisory lock (released automatically on disconnect).
+    $lockName = 'mautic-init-'.$params['db_name'];
+    logmsg('acquiring init lock');
+    $lock = $pdo->prepare('SELECT GET_LOCK(?, ?)');
+    $lock->execute([$lockName, (int) env('MAUTIC_INIT_LOCK_TIMEOUT', '900')]);
+    if (1 !== (int) $lock->fetchColumn()) {
+        fail('timed out waiting for the init lock held by another replica');
+    }
 
     if (!isInstalled($pdo, $params)) {
         $password = env('MAUTIC_ADMIN_PASSWORD');
