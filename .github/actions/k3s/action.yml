@@ -24,4 +24,6 @@ runs:
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" sh -s - --write-kubeconfig-mode 644
         echo "KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> "$GITHUB_ENV"
         export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        # The node registers a few seconds after the service starts.
+        for i in $(seq 1 60); do kubectl get nodes 2>/dev/null | grep -q . && break; sleep 2; done
         kubectl wait --for=condition=Ready node --all --timeout=3m

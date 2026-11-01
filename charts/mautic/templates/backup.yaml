@@ -42,8 +42,17 @@ spec:
             - name: dump
               image: {{ include "mautic.imageRef" (dict "image" $dumpImage "default" "11.4") }}
               imagePullPolicy: {{ $dumpImage.pullPolicy | default "IfNotPresent" }}
-              command: [mariadb-dump]
+              # Wait for the database first: right after pod start, NetworkPolicy
+              # rules may not be programmed yet, and mariadb-dump does not retry.
+              command: [/bin/sh, -ec]
               args:
+                - |
+                  for i in $(seq 1 60); do
+                    mariadb-admin --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --connect-timeout=5 ping >/dev/null 2>&1 && break
+                    echo "waiting for database ($i)"; sleep 5
+                  done
+                  exec mariadb-dump "$@"
+                - mariadb-dump
                 - --host=$(DB_HOST)
                 - --port=$(DB_PORT)
                 - --user=$(DB_USER)
