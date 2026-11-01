@@ -1,0 +1,181 @@
+name: chart
+
+# Lint + schema validation of every values file in charts/mautic/ci, an
+# end-to-end install on kind (MariaDB, web, worker, cron, restic backup), and
+# OCI release of the chart when its version changes on main.
+
+on:
+  push:
+    branches: [main]
+    paths: [charts/**, image/**, .github/workflows/chart.yml]
+  pull_request:
+    paths: [charts/**, image/**, .github/workflows/chart.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chart-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CHART: charts/mautic
+  # renovate: datasource=github-releases depName=helm/helm
+  HELM_VERSION: v3.19.0
+  # renovate: datasource=github-releases depName=yannh/kubeconform
+  KUBECONFORM_VERSION: v0.7.0
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+      - name: helm lint + kubeconform (all ci/*.yaml)
+        run: |
+          for f in "$CHART"/ci/*-values.yaml; do
+            echo "::group::$f"
+            helm lint "$CHART" -f "$f" --strict
+            helm template test "$CHART" -f "$f" | kubeconform -strict -summary \
+              -kubernetes-version 1.31.0 \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+            echo "::endgroup::"
+          done
+      - name: Required values fail loudly
+        run: |
+          if helm template test "$CHART" >/dev/null 2>&1; then
+            echo "::error::rendering without mautic.siteUrl must fail"; exit 1
+          fi
+          helm template test "$CHART" 2>&1 | grep -q 'mautic.siteUrl is required'
+
+  e2e:
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: image
+          platforms: linux/amd64
+          load: true
+          tags: mautic:e2e
+          cache-from: type=gha,scope=amd64
+      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        with:
+          cluster_name: e2e
+      - name: Load image into kind
+        run: kind load docker-image mautic:e2e --name e2e
+
+      - name: Backup target (restic rest-server, separate namespace)
+        run: |
+          kubectl create namespace backup-target
+          kubectl -n backup-target create deployment rest-server --image=restic/rest-server:0.14.0 --port=8000
+          kubectl -n backup-target set env deployment/rest-server DISABLE_AUTHENTICATION=1
+          kubectl -n backup-target expose deployment rest-server --port 8000
+          kubectl -n backup-target rollout status deployment/rest-server --timeout 3m
+          kubectl create namespace mautic
+          kubectl -n mautic create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup-password
+
+      - name: helm install
+        run: |
+          helm install mautic "$CHART" -n mautic \
+            -f "$CHART/ci/default-values.yaml" \
+            --set image.repository=mautic --set image.tag=e2e --set image.pullPolicy=Never \
+            --set mautic.messenger.email=doctrine://default \
+            --set backup.enabled=true \
+            --set backup.repository=rest:http://rest-server.backup-target:8000/mautic \
+            --set backup.existingSecret=mautic-backup \
+            --set networkPolicy.enabled=true \
+            --wait --timeout 15m
+
+      - name: helm test (login page through the Service)
+        run: helm test mautic -n mautic --logs
+
+      - name: Pods comply with Pod Security "restricted"
+        run: |
+          kubectl label namespace mautic pod-security.kubernetes.io/enforce=restricted --overwrite --dry-run=server 2>&1 | tee /tmp/psa.txt
+          if grep -qi "violate" /tmp/psa.txt; then exit 1; fi
+
+      - name: Worker is running
+        run: kubectl -n mautic rollout status deploy/mautic-worker --timeout 5m
+
+      - name: Cron job runs
+        run: |
+          kubectl -n mautic create job seg-e2e --from=cronjob/mautic-segments-update
+          kubectl -n mautic wait --for=condition=complete job/seg-e2e --timeout 5m
+
+      - name: Backup runs and is restorable
+        run: |
+          kubectl -n mautic create job backup-e2e --from=cronjob/mautic-backup
+          kubectl -n mautic wait --for=condition=complete job/backup-e2e --timeout 10m
+          kubectl -n mautic logs job/backup-e2e -c restic | tail -20
+          kubectl -n backup-target run restic-ls --rm -i --restart=Never \
+            --image=ghcr.io/kopexa-grc/restic:0.19 --env=RESTIC_PASSWORD=e2e-backup-password \
+            -- ls latest -r rest:http://rest-server:8000/mautic | tee /tmp/ls.txt
+          grep -q '/backup/database.sql' /tmp/ls.txt
+
+      - name: Upgrade is a no-op for data (re-runs init)
+        run: |
+          helm upgrade mautic "$CHART" -n mautic --reuse-values --set web.podAnnotations.e2e=upgrade --wait --timeout 10m
+          helm test mautic -n mautic
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl -n mautic get all,pvc,secrets
+          kubectl -n mautic describe pods | tail -100
+          for p in $(kubectl -n mautic get pods -o name); do
+            echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
+          done
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: e2e
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - name: Version already published?
+        id: check
+        run: |
+          v="$(sed -n 's/^version: //p' "$CHART/Chart.yaml")"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/chart-$v" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Package and push to GHCR (OCI)
+        if: steps.check.outputs.exists != 'true'
+        id: push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package "$CHART" -d /tmp/chart
+          out="$(helm push /tmp/chart/mautic-*.tgz "oci://ghcr.io/${{ github.repository_owner }}/charts" 2>&1)"
+          echo "$out"
+          echo "digest=$(sed -n 's/^Digest: //p' <<<"$out")" >> "$GITHUB_OUTPUT"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: steps.check.outputs.exists != 'true'
+      - name: Sign chart and tag release
+        if: steps.check.outputs.exists != 'true'
+        run: |
+          cosign sign --yes "ghcr.io/${{ github.repository_owner }}/charts/mautic@${{ steps.push.outputs.digest }}"
+          git tag "chart-${{ steps.check.outputs.version }}"
+          git push origin "chart-${{ steps.check.outputs.version }}"
