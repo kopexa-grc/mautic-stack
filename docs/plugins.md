@@ -13,10 +13,21 @@ months, and a clear need for our use cases.
 | Extension | What for | Configure in Mautic |
 |---|---|---|
 | [leuchtfeuer/mautic-doi-bundle](https://packagist.org/packages/leuchtfeuer/mautic-doi-bundle) | Double opt-in for forms and segments (GDPR, German UWG) | *Settings → Plugins → Double Opt-In* |
-| [etailors/mautic-amazon-ses](https://packagist.org/packages/etailors/mautic-amazon-ses) | Amazon SES sending via API **plus bounce/complaint handling** via SNS — the replacement for IMAP bounce processing | DSN `mautic+ses+api://KEY:SECRET@default?region=eu-central-1`, see the plugin README |
 | [tawk-gmbh/mautic-friendlycaptcha-bundle](https://packagist.org/packages/tawk-gmbh/mautic-friendlycaptcha-bundle) | Friendly Captcha for forms (EU vendor, no cookies) | *Plugins → Friendly Captcha* |
 | [firemultimedia/mautic-multi-captcha-bundle](https://packagist.org/packages/firemultimedia/mautic-multi-captcha-bundle) | hCaptcha, Cloudflare Turnstile, reCAPTCHA | *Plugins → Multi Captcha* |
-| `symfony/{amazon,brevo,postmark,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `brevo+api://KEY@default`, `postmark+api://KEY@default` |
+
+Mail goes out via **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
+server — no provider API bridges are needed:
+
+```yaml
+mautic:
+  mailer:
+    existingSecret: mautic-mailer   # key mailer-dsn: smtp://USER:PASSWORD@postal.example.com:25
+    fromEmail: newsletter@example.com
+```
+
+Use an SMTP credential of the Postal mail server; Postal offers STARTTLS on
+port 25 (and 587 if enabled).
 
 List what is installed in a running image:
 

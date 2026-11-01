@@ -134,10 +134,9 @@ also works with `helm template | kustomize`.
 
 ## Built-in extensions
 
-Double opt-in, Amazon SES with bounce handling, Friendly Captcha /
-hCaptcha / Turnstile, and API transports for SES, Brevo, Postmark, Mailgun,
-SendGrid and Mailjet — curated, pinned and updated by Renovate. See
-[docs/plugins.md](docs/plugins.md).
+Double opt-in and Friendly Captcha / hCaptcha / Turnstile for forms —
+curated, pinned and updated by Renovate. Mail is sent via SMTP (e.g. to a
+Postal server). See [docs/plugins.md](docs/plugins.md).
 
 ## Docker / Compose
 
