@@ -10,6 +10,7 @@
  *                       (if MAUTIC_ADMIN_PASSWORD is set), run migrations
  *   worker [transport…] consume Messenger queues (default: email hit)
  *   console <args…>     run bin/console (skipped with exit 0 until installed)
+ *   plugins             list built-in extensions and their versions
  *   version             print the Mautic version
  *
  * Configuration comes from the environment and is handed to Mautic through
@@ -375,6 +376,17 @@ switch ($cmd) {
         }
         execProgram(PHP, array_merge([CONSOLE], $rest), $envOut);
 
+    case 'plugins':
+        // Built-in extensions (image/plugins.txt) with installed versions.
+        $installed = json_decode((string) file_get_contents(APP_ROOT.'/vendor/composer/installed.json'), true);
+        foreach ($installed['packages'] ?? [] as $package) {
+            if (in_array($package['type'] ?? '', ['mautic-plugin', 'symfony-mailer-bridge'], true)
+                || str_ends_with($package['name'], '-mailer')) {
+                printf("%s %s\n", $package['name'], $package['version']);
+            }
+        }
+        exit(0);
+
     case 'version':
         $composer = json_decode((string) file_get_contents(APP_ROOT.'/vendor/composer/installed.json'), true);
         foreach ($composer['packages'] ?? [] as $package) {
@@ -386,5 +398,5 @@ switch ($cmd) {
         fail('could not determine Mautic version');
 
     default:
-        fail("unknown command '$cmd' (web|init|worker|console|version)");
+        fail("unknown command '$cmd' (web|init|worker|console|plugins|version)");
 }

@@ -132,6 +132,13 @@ env/volumes/sidecars/init containers, per-job schedules, PDB, HPA and
 `extraObjects` for anything else. The chart renders plain manifests, so it
 also works with `helm template | kustomize`.
 
+## Built-in extensions
+
+Double opt-in, Amazon SES with bounce handling, Friendly Captcha /
+hCaptcha / Turnstile, and API transports for SES, Brevo, Postmark, Mailgun,
+SendGrid and Mailjet — curated, pinned and updated by Renovate. See
+[docs/plugins.md](docs/plugins.md).
+
 ## Docker / Compose
 
 ```bash

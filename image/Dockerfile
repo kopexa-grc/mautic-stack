@@ -29,6 +29,12 @@ RUN composer create-project --no-progress --no-dev \
       --ignore-platform-req=ext-imap \
       "mautic/recommended-project:${MAUTIC_VERSION}" mautic
 
+# Built-in extensions (image/plugins.txt).
+COPY plugins.txt /build/plugins.txt
+RUN cd mautic \
+ && grep -vE '^\s*(#|$)' /build/plugins.txt | xargs composer require --no-progress \
+      --update-no-dev --ignore-platform-req=ext-imap
+
 WORKDIR /build/mautic
 # Writable directories are moved out of the tree at the end: COPY --chown only
 # applies to directories it creates, not to ones that already exist.

@@ -52,6 +52,17 @@
       ],
       "datasourceTemplate": "packagist",
       "depNameTemplate": "mautic/recommended-project"
+    },
+    {
+      "customType": "regex",
+      "description": "Built-in Mautic extensions (exact pins in image/plugins.txt; wildcard pins follow Mautic)",
+      "managerFilePatterns": [
+        "/^image/plugins\\.txt$/"
+      ],
+      "matchStrings": [
+        "(?m)^(?<depName>[a-z0-9_.-]+/[a-z0-9_.-]+):(?<currentValue>v?[0-9][0-9.]*)$"
+      ],
+      "datasourceTemplate": "packagist"
     }
   ],
   "packageRules": [
@@ -89,6 +100,16 @@
         "patch",
         "digest",
         "pinDigest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Extension updates are tested end-to-end before merge; only patches automerge",
+      "matchFileNames": [
+        "image/plugins.txt"
+      ],
+      "matchUpdateTypes": [
+        "patch"
       ],
       "automerge": true
     }
