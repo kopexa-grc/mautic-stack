@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Mautic version in the Dockerfile",
+      "managerFilePatterns": ["/^image/Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+ARG MAUTIC_VERSION=(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Scanner images in workflow env blocks",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>[^\\s]+)\\s+[A-Z_]+_IMAGE: [^:]+:(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Mautic patch releases: automerge once the smoke test passes",
+      "matchDepNames": ["mautic/recommended-project"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Mautic minor/major releases need a human look (migrations, breaking changes)",
+      "matchDepNames": ["mautic/recommended-project"],
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false,
+      "labels": ["dependencies", "mautic-release"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pinDigest"],
+      "automerge": true
+    }
+  ]
+}
