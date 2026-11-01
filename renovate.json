@@ -23,12 +23,12 @@
     },
     {
       "customType": "regex",
-      "description": "Scanner images in workflow env blocks",
+      "description": "Tool images in workflow env blocks (scanners, helm-docs), optionally digest-pinned",
       "managerFilePatterns": [
         "/^\\.github/workflows/.+\\.ya?ml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>[^\\s]+)\\s+[A-Z_]+_IMAGE: [^:]+:(?<currentValue>\\S+)"
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>[^\\s]+)\\s+[A-Z_]+_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)(@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ]
     },
     {

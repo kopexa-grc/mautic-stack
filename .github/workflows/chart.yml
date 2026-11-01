@@ -21,6 +21,8 @@ concurrency:
 
 env:
   CHART: charts/mautic
+  # renovate: datasource=docker depName=jnorwood/helm-docs
+  HELM_DOCS_IMAGE: jnorwood/helm-docs:v1.14.2@sha256:7e562b49ab6b1dbc50c3da8f2dd6ffa8a5c6bba327b1c6335cc15ce29267979c
   # renovate: datasource=github-releases depName=helm/helm
   HELM_VERSION: v3.19.0
   # renovate: datasource=github-releases depName=yannh/kubeconform
@@ -54,6 +56,12 @@ jobs:
           yq -o=json "$CHART/values.yaml" | python3 "$CHART/hack/gen-schema.py" > /tmp/schema.json
           diff -u "$CHART/values.schema.json" /tmp/schema.json \
             || { echo "::error::run: yq -o=json values.yaml | python3 hack/gen-schema.py > values.schema.json"; exit 1; }
+      - name: README.md is up to date (helm-docs)
+        run: |
+          docker run --rm -u "$(id -u)" -v "$PWD/$CHART:/helm-docs" "$HELM_DOCS_IMAGE" \
+            --chart-search-root=/helm-docs --template-files=README.md.gotmpl
+          git diff --exit-code -- "$CHART/README.md" \
+            || { echo "::error::run helm-docs in charts/mautic (see README.md.gotmpl)"; exit 1; }
       - name: Mautic version consistent (Dockerfile, appVersion, Artifact Hub)
         run: |
           docker="$(sed -n 's/^ARG MAUTIC_VERSION=//p' image/Dockerfile | head -1)"
@@ -146,6 +154,8 @@ jobs:
             IFS=. read -r major minor patch <<<"$v"
             v="$major.$minor.$((patch + 1))"
             yq -i ".version = \"$v\"" "$CHART/Chart.yaml"
+            docker run --rm -u "$(id -u)" -v "$PWD/$CHART:/helm-docs" "$HELM_DOCS_IMAGE" \
+              --chart-search-root=/helm-docs --template-files=README.md.gotmpl
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -qam "chore(chart): release $v [skip ci]"

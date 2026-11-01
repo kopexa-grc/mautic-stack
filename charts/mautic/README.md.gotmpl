@@ -1,0 +1,99 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }} [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
+
+{{ template "chart.description" . }}
+
+Maintained by **[Kopexa](https://kopexa.com)**. Source, issues and full
+documentation: [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-stack).
+
+## Highlights
+
+- **Hardened image** [`ghcr.io/kopexa-grc/mautic`](https://github.com/kopexa-grc/mautic-stack/pkgs/container/mautic):
+  - built on [kopexa-grc/images](https://github.com/kopexa-grc/images), with no shell and no package manager
+  - non-root (uid 65532) with a read-only root filesystem
+  - rebuilt daily, signed with cosign, with SBOM and SLSA provenance, for amd64 and arm64
+- **Kubernetes best practices**:
+  - Pod Security "restricted" and ingress/egress NetworkPolicies
+  - PodDisruptionBudget, HPA and central resource defaults
+  - `values.schema.json` validation, so typos fail at install time
+- **Components**:
+  - web and Messenger queue workers
+  - every Mautic cron job as a CronJob
+  - optional MariaDB or an external database (credentials from operator Secrets)
+- **Exposure**: Ingress *or* Gateway API `HTTPRoute`.
+- **Backups**: restic to S3, B2, Azure, GCS, SFTP or REST, with database dump and media.
+- **Single sign-on**: SAML with Keycloak, Google Workspace, Entra ID and others.
+- **AI assistants via MCP**: Claude, ChatGPT and other clients connect to `/mcp` with standard OAuth 2.1 (PKCE, dynamic client registration). They can read data and write **drafts only**, with the user's Mautic permissions.
+- **Built-in extensions**:
+  - Postal bounce webhooks
+  - Kopexa email theme
+  - double opt-in
+  - Symfony mailer bridges (SES, Postmark, Brevo, Mailgun, SendGrid, Mailjet)
+
+## Install
+
+```bash
+helm install mautic oci://ghcr.io/kopexa-grc/charts/mautic \
+  --namespace mautic --create-namespace \
+  --set mautic.siteUrl=https://mautic.example.com
+```
+
+The first start installs Mautic automatically. The generated admin password:
+
+```bash
+kubectl -n mautic get secret mautic -o jsonpath='{.data.admin-password}' | base64 -d; echo
+```
+
+Expose it with your ingress controller **or** Gateway API:
+
+```yaml
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: mautic.example.com
+      paths: [{path: /, pathType: Prefix}]
+  tls:
+    - secretName: mautic-tls
+      hosts: [mautic.example.com]
+# or
+httpRoute:
+  enabled: true
+  parentRefs: [{name: shared-gateway, namespace: gateway-system}]
+  hostnames: [mautic.example.com]
+```
+
+Verify the chart signature (keyless cosign):
+
+```bash
+cosign verify ghcr.io/kopexa-grc/charts/mautic:{{ template "chart.version" . }} \
+  --certificate-identity-regexp 'https://github.com/kopexa-grc/mautic-stack/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+## Documentation
+
+| Topic | |
+|---|---|
+| [Configuration](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/configuration.md) | image commands, environment variables, Mautic parameters |
+| [Production](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/production.md) | sizing, scaling, storage, upgrades |
+| [Backup and restore](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/backup.md) | restic targets, restore procedure |
+| [SAML SSO](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/sso.md) | Keycloak, Google Workspace, Entra ID |
+| [MCP for AI assistants](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/mcp.md) | connect Claude, ChatGPT; tools and permissions |
+| [OAuth 2.1](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/oauth.md) | authorization server, security model |
+| [Postal](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/postal.md) | sending via SMTP, bounce webhooks |
+| [Extensions](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/plugins.md) | what is built into the image |
+| [Limitations](https://github.com/kopexa-grc/mautic-stack/blob/main/docs/limitations.md) | known gaps (e.g. no IMAP bounce processing) |
+
+Mautic supports MySQL/MariaDB only.
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+---
+
+Apache-2.0 · [Kopexa](https://kopexa.com) · This README is generated from
+`README.md.gotmpl` and `values.yaml` with
+[helm-docs](https://github.com/norwoodj/helm-docs).

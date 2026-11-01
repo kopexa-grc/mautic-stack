@@ -1,6 +1,6 @@
 apiVersion: v2
 name: mautic
-description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, optional MariaDB and restic backups.
+description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), optional MariaDB and restic backups.
 type: application
 # Patch releases are cut automatically by CI whenever the chart changes.
 version: 0.3.2
@@ -12,7 +12,7 @@ sources:
   - https://github.com/kopexa-grc/mautic-stack
   - https://github.com/kopexa-grc/images
   - https://github.com/mautic/mautic
-keywords: [mautic, marketing-automation, email, crm, saml, sso]
+keywords: [mautic, marketing-automation, email, newsletter, crm, saml, sso, mcp, oauth2, ai]
 maintainers:
   - name: Kopexa
     url: https://kopexa.com
