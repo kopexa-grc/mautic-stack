@@ -87,12 +87,12 @@ spec:
             - name: MARIADB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mautic.db.secretName" . }}
+                  name: {{ include "mautic.mariadb.secretName" . }}
                   key: mariadb-password
             - name: MARIADB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mautic.db.secretName" . }}
+                  name: {{ include "mautic.mariadb.secretName" . }}
                   key: mariadb-root-password
             - name: MARIADB_AUTO_UPGRADE
               value: "1"

@@ -39,9 +39,9 @@ spec:
               imagePullPolicy: {{ $dumpImage.pullPolicy | default "IfNotPresent" }}
               command: [mariadb-dump]
               args:
-                - --host={{ include "mautic.db.host" . }}
-                - --port={{ include "mautic.db.port" . }}
-                - --user={{ include "mautic.db.user" . }}
+                - --host=$(DB_HOST)
+                - --port=$(DB_PORT)
+                - --user=$(DB_USER)
                 - --single-transaction
                 - --quick
                 - --routines
@@ -49,13 +49,11 @@ spec:
                 - --events
                 - --hex-blob
                 - --result-file=/backup/database.sql
-                - {{ include "mautic.db.name" . }}
+                - $(DB_NAME)
               env:
+                {{- include "mautic.db.env" (dict "ctx" . "prefix" "DB_") | nindent 16 }}
                 - name: MYSQL_PWD
-                  valueFrom:
-                    secretKeyRef:
-                      name: {{ include "mautic.db.secretName" . }}
-                      key: {{ include "mautic.db.secretKey" . }}
+                  value: $(DB_PASSWORD)
               securityContext:
                 {{- toYaml .Values.containerSecurityContext | nindent 16 }}
               resources:
@@ -80,16 +78,17 @@ spec:
                     --keep-monthly {{ .Values.backup.retention.keepMonthly }}
                   restic check --read-data-subset=1%
               env:
-                - name: RESTIC_REPOSITORY
-                  value: {{ required "backup.repository is required when backup.enabled=true" .Values.backup.repository | quote }}
+                {{- include "mautic.backup.env" . | nindent 16 }}
                 - name: BACKUP_HOST
                   value: {{ printf "%s/%s" .Release.Namespace (include "mautic.fullname" .) | quote }}
                 {{- with .Values.backup.extraEnv }}
                 {{- toYaml . | nindent 16 }}
                 {{- end }}
+              {{- with .Values.backup.existingSecret }}
               envFrom:
                 - secretRef:
-                    name: {{ required "backup.existingSecret is required (RESTIC_PASSWORD + backend credentials)" .Values.backup.existingSecret }}
+                    name: {{ . }}
+              {{- end }}
               securityContext:
                 {{- toYaml .Values.containerSecurityContext | nindent 16 }}
               resources:

@@ -1,0 +1,10 @@
+# External DB with plain values and a chart-managed password secret.
+mautic:
+  siteUrl: https://mautic.example.com
+mariadb:
+  enabled: false
+externalDatabase:
+  host: db.example.internal
+  port: 3307
+  password: not-a-real-password
+  tablePrefix: mtc_

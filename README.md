@@ -90,6 +90,27 @@ backup:
   existingSecret: mautic-backup   # RESTIC_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 ```
 
+Every connection field can also come straight from an operator's or secret
+manager's Secret, with your own key names — e.g. a
+[mariadb-operator](https://github.com/mariadb-operator/mariadb-operator)
+`Connection` secret and bucket credentials from an ObjectBucketClaim:
+
+```yaml
+externalDatabase:
+  existingSecret: mautic-connection
+  secretKeys: {host: host, port: port, database: database, username: username, password: password}
+backup:
+  enabled: true
+  configMapEnv:
+    RESTIC_REPOSITORY: {name: mautic-backup-config, key: RESTIC_REPOSITORY}
+  secretEnv:
+    RESTIC_PASSWORD:       {name: mautic-backup, key: restic-password}
+    AWS_ACCESS_KEY_ID:     {name: mautic-bucket, key: AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: {name: mautic-bucket, key: AWS_SECRET_ACCESS_KEY}
+```
+
+Mautic supports MySQL/MariaDB only (no PostgreSQL, so no CloudNativePG).
+
 See [docs/production.md](docs/production.md) (sizing, scaling, storage,
 upgrades) and [docs/backup.md](docs/backup.md) (backup and restore).
 

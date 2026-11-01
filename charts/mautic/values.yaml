@@ -328,16 +328,26 @@ mariadb:
   affinity: {}
 
 externalDatabase:
+  # Each connection field is either a plain value here or read from a key of
+  # existingSecret (secretKeys.<field>; empty = use the plain value).
   host: ""
   port: 3306
   database: mautic
   username: mautic
-  # -- Secret holding the password (recommended).
-  existingSecret: ""
-  passwordKey: password
-  # -- Plain password (only if existingSecret is empty; ends up in a Secret).
+  # -- Plain password (only if not read from existingSecret; stored in a
+  # Secret created by the chart).
   password: ""
   tablePrefix: ""
+  existingSecret: ""
+  secretKeys:
+    host: ""
+    port: ""
+    database: ""
+    username: ""
+    password: password
+  # Example: a mariadb-operator Connection secret
+  #   existingSecret: mautic-connection
+  #   secretKeys: {host: host, port: port, database: database, username: username, password: password}
 
 # ---------------------------------------------------------------------------
 # Backups: database dump (mariadb-dump) + media, stored with restic
@@ -348,11 +358,20 @@ backup:
   enabled: false
   schedule: "17 2 * * *"
   timeZone: ""
+  # Where restic stores backups and how it authenticates. Combine as needed:
   # -- restic repository, e.g. s3:https://s3.eu-central-1.amazonaws.com/my-bucket/mautic
   repository: ""
-  # -- Secret with RESTIC_PASSWORD and backend credentials
-  # (e.g. AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY), injected via envFrom.
+  # -- Secret whose keys are used as env vars as-is (envFrom), e.g.
+  # RESTIC_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
   existingSecret: ""
+  # -- Map env var -> {name, key} of a Secret, for secrets with other key
+  # names (External Secrets, ObjectBucketClaims, cloud operators), e.g.
+  #   RESTIC_PASSWORD:       {name: mautic-backup, key: restic-password}
+  #   AWS_ACCESS_KEY_ID:     {name: mautic-bucket, key: AWS_ACCESS_KEY_ID}
+  #   AWS_SECRET_ACCESS_KEY: {name: mautic-bucket, key: AWS_SECRET_ACCESS_KEY}
+  secretEnv: {}
+  # -- Same for ConfigMap keys, e.g. RESTIC_REPOSITORY built from a bucket ConfigMap.
+  configMapEnv: {}
   includeMedia: true
   retention:
     keepDaily: 7

@@ -82,38 +82,67 @@ annotations:
 {{- printf "%s-mariadb" (include "mautic.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "mautic.db.host" -}}
-{{- if .Values.mariadb.enabled }}
-{{- include "mautic.mariadb.fullname" . }}
-{{- else }}
-{{- required "externalDatabase.host is required when mariadb.enabled=false" .Values.externalDatabase.host }}
-{{- end }}
-{{- end }}
-
-{{- define "mautic.db.port" -}}
-{{- if .Values.mariadb.enabled }}3306{{ else }}{{ .Values.externalDatabase.port }}{{ end }}
-{{- end }}
-
-{{- define "mautic.db.name" -}}
-{{- if .Values.mariadb.enabled }}{{ .Values.mariadb.auth.database }}{{ else }}{{ .Values.externalDatabase.database }}{{ end }}
-{{- end }}
-
-{{- define "mautic.db.user" -}}
-{{- if .Values.mariadb.enabled }}{{ .Values.mariadb.auth.username }}{{ else }}{{ .Values.externalDatabase.username }}{{ end }}
-{{- end }}
-
-{{- define "mautic.db.secretName" -}}
-{{- if .Values.mariadb.enabled }}
+{{- define "mautic.mariadb.secretName" -}}
 {{- default (include "mautic.mariadb.fullname" .) .Values.mariadb.auth.existingSecret }}
-{{- else if .Values.externalDatabase.existingSecret }}
-{{- .Values.externalDatabase.existingSecret }}
+{{- end }}
+
+{{/*
+Database connection as env vars. Every field of externalDatabase can come
+from a plain value or from a key in externalDatabase.existingSecret
+(externalDatabase.secretKeys.<field>), e.g. an operator's connection secret.
+  include "mautic.db.env" (dict "ctx" . "prefix" "MAUTIC_DB_")
+emits <prefix>HOST, PORT, NAME, USER, PASSWORD.
+*/}}
+{{- define "mautic.db.env" -}}
+{{- $v := .ctx.Values -}}
+{{- $names := dict "host" "HOST" "port" "PORT" "database" "NAME" "username" "USER" "password" "PASSWORD" -}}
+{{- if $v.mariadb.enabled }}
+- name: {{ .prefix }}HOST
+  value: {{ include "mautic.mariadb.fullname" .ctx | quote }}
+- name: {{ .prefix }}PORT
+  value: "3306"
+- name: {{ .prefix }}NAME
+  value: {{ $v.mariadb.auth.database | quote }}
+- name: {{ .prefix }}USER
+  value: {{ $v.mariadb.auth.username | quote }}
+- name: {{ .prefix }}PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "mautic.mariadb.secretName" .ctx }}
+      key: mariadb-password
 {{- else }}
-{{- printf "%s-externaldb" (include "mautic.fullname" .) }}
+{{- $db := $v.externalDatabase -}}
+{{- $keys := deepCopy ($db.secretKeys | default dict) -}}
+{{- $pwKey := default $db.passwordKey $keys.password -}}
+{{- $_ := set $keys "password" $pwKey -}}
+{{- if not (or $db.host (and $db.existingSecret $keys.host)) }}
+{{- fail "externalDatabase.host (or existingSecret + secretKeys.host) is required when mariadb.enabled=false" }}
+{{- end }}
+{{- range $field := list "host" "port" "database" "username" "password" }}
+- name: {{ $.prefix }}{{ index $names $field }}
+{{- $key := index $keys $field }}
+{{- if and $db.existingSecret $key }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $db.existingSecret }}
+      key: {{ $key }}
+{{- else if eq $field "password" }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "mautic.fullname" $.ctx }}-externaldb
+      key: password
+{{- else }}
+  value: {{ index $db $field | toString | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
-{{- define "mautic.db.secretKey" -}}
-{{- if .Values.mariadb.enabled }}mariadb-password{{ else if .Values.externalDatabase.existingSecret }}{{ .Values.externalDatabase.passwordKey }}{{ else }}password{{ end }}
+{{/* True if the chart must create a Secret for the external DB password. */}}
+{{- define "mautic.db.needsPasswordSecret" -}}
+{{- $db := .Values.externalDatabase -}}
+{{- $keys := $db.secretKeys | default dict -}}
+{{- if and (not .Values.mariadb.enabled) (not (and $db.existingSecret (or $keys.password $db.passwordKey))) }}true{{ end }}
 {{- end }}
 
 {{/* ---------- secrets ---------- */}}
@@ -196,19 +225,7 @@ affinity:
 
 {{/* ---------- environment ---------- */}}
 {{- define "mautic.env" -}}
-- name: MAUTIC_DB_HOST
-  value: {{ include "mautic.db.host" . | quote }}
-- name: MAUTIC_DB_PORT
-  value: {{ include "mautic.db.port" . | quote }}
-- name: MAUTIC_DB_NAME
-  value: {{ include "mautic.db.name" . | quote }}
-- name: MAUTIC_DB_USER
-  value: {{ include "mautic.db.user" . | quote }}
-- name: MAUTIC_DB_PASSWORD
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "mautic.db.secretName" . }}
-      key: {{ include "mautic.db.secretKey" . }}
+{{ include "mautic.db.env" (dict "ctx" . "prefix" "MAUTIC_DB_") }}
 {{- if and (not .Values.mariadb.enabled) .Values.externalDatabase.tablePrefix }}
 - name: MAUTIC_DB_TABLE_PREFIX
   value: {{ .Values.externalDatabase.tablePrefix | quote }}
@@ -286,4 +303,39 @@ envFrom:
 {{/* Host header for probes, so Mautic's trusted_hosts check passes. */}}
 {{- define "mautic.siteHost" -}}
 {{- (urlParse .Values.mautic.siteUrl).host -}}
+{{- end }}
+
+{{/*
+Environment for the restic container: repository, password and backend
+credentials can each come from a plain value, a whole Secret (envFrom) or
+individual Secret/ConfigMap keys.
+*/}}
+{{- define "mautic.backup.env" -}}
+{{- $b := .Values.backup -}}
+{{- $secretEnv := $b.secretEnv | default dict -}}
+{{- $cmEnv := $b.configMapEnv | default dict -}}
+{{- if not (or $b.repository $b.existingSecret (hasKey $secretEnv "RESTIC_REPOSITORY") (hasKey $cmEnv "RESTIC_REPOSITORY")) }}
+{{- fail "backup: set backup.repository, or provide RESTIC_REPOSITORY via backup.existingSecret / secretEnv / configMapEnv" }}
+{{- end }}
+{{- if not (or $b.existingSecret (hasKey $secretEnv "RESTIC_PASSWORD")) }}
+{{- fail "backup: RESTIC_PASSWORD must come from backup.existingSecret or backup.secretEnv.RESTIC_PASSWORD" }}
+{{- end }}
+{{- if $b.repository }}
+- name: RESTIC_REPOSITORY
+  value: {{ $b.repository | quote }}
+{{- end }}
+{{- range $name, $ref := $secretEnv }}
+- name: {{ $name }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ required (printf "backup.secretEnv.%s.name is required" $name) $ref.name }}
+      key: {{ required (printf "backup.secretEnv.%s.key is required" $name) $ref.key }}
+{{- end }}
+{{- range $name, $ref := $cmEnv }}
+- name: {{ $name }}
+  valueFrom:
+    configMapKeyRef:
+      name: {{ required (printf "backup.configMapEnv.%s.name is required" $name) $ref.name }}
+      key: {{ required (printf "backup.configMapEnv.%s.key is required" $name) $ref.key }}
+{{- end }}
 {{- end }}
