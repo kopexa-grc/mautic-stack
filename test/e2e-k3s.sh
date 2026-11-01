@@ -78,8 +78,12 @@ helm install mautic "$CHART" -n "$NS" "${common[@]}" \
   --set "ingress.tls[0].hosts[0]=$HOST" \
   --set backup.enabled=true \
   --set networkPolicy.enabled=true \
+  --set networkPolicy.egress.enabled=true \
+  --set-json 'networkPolicy.egress.to=[
+      {"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"mail"}}}],"ports":[{"port":1025}]},
+      {"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"backup-target"}}}],"ports":[{"port":8000}]}]' \
   --wait --timeout 15m
-pass "installed (Pod Security restricted enforced, NetworkPolicies on)"
+pass "installed (Pod Security restricted enforced, ingress + egress NetworkPolicies on)"
 
 step "Cluster checks"
 helm test mautic -n "$NS" --logs >/dev/null && pass "helm test" || fail "helm test"
@@ -99,6 +103,11 @@ loc="$(https -o /dev/null -w '%{redirect_url}' "https://$HOST/s/dashboard")"
 echo "  redirect: $loc"
 [[ "$loc" == "https://$HOST/"* ]] && pass "redirects stay on https (X-Forwarded-Proto trusted)" \
   || fail "redirect is not https://$HOST/… — trusted proxies not applied"
+
+step "Egress allow-list is enforced"
+blocked="$(kubectl -n "$NS" exec deploy/mautic-worker -- /usr/bin/php -r '
+  $s = @fsockopen("1.1.1.1", 443, $errno, $errstr, 5); echo $s ? "open" : "blocked";' 2>/dev/null || true)"
+[[ "$blocked" == blocked ]] && pass "egress to the internet blocked" || fail "egress not restricted ($blocked)"
 
 step "Send an email: API → queue → worker → SMTP → Mailpit"
 cid="$(api -X POST "https://$HOST/api/contacts/new" -d email=e2e@example.com -d firstname=E2E | jq -r '.contact.id')"
