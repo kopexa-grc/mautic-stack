@@ -118,6 +118,14 @@ while read -r spec; do
   grep -q "^$pkg " <<<"$installed" && pass "installed: $pkg ($(grep "^$pkg " <<<"$installed" | cut -d' ' -f2))" \
     || fail "missing extension $pkg"
 done < <(grep -vE '^\s*(#|$)' "$(dirname "$0")/../image/plugins.txt")
+docker run --rm --entrypoint /usr/bin/php "$IMG" -r '
+  require "/app/vendor/autoload.php";
+  foreach (["Amazon\\Transport\\SesTransportFactory", "Postmark\\Transport\\PostmarkTransportFactory",
+            "Brevo\\Transport\\BrevoTransportFactory", "Mailgun\\Transport\\MailgunTransportFactory",
+            "Sendgrid\\Transport\\SendgridTransportFactory", "Mailjet\\Transport\\MailjetTransportFactory"] as $c) {
+    $class = "Symfony\\Component\\Mailer\\Bridge\\".$c;
+    if (!class_exists($class)) { fwrite(STDERR, "missing $class\n"); exit(1); }
+  }' && pass "mailer API bridges loadable" || fail "mailer bridges"
 init_out="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)"
 grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && pass "plugins registered with Mautic" || { echo "$init_out" | tail -5; fail "plugin reload"; }
 

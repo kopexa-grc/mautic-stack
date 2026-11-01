@@ -134,9 +134,9 @@ also works with `helm template | kustomize`.
 
 ## Built-in extensions
 
-Double opt-in and Friendly Captcha / hCaptcha / Turnstile for forms —
-curated, pinned and updated by Renovate. Mail is sent via SMTP (e.g. to a
-Postal server). See [docs/plugins.md](docs/plugins.md).
+Double opt-in, plus API transports for SES, Postmark, Brevo, Mailgun,
+SendGrid and Mailjet next to SMTP (e.g. Postal) — curated, pinned and
+updated by Renovate. See [docs/plugins.md](docs/plugins.md).
 
 ## Docker / Compose
 

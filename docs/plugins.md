@@ -13,11 +13,11 @@ months, and a clear need for our use cases.
 | Extension | What for | Configure in Mautic |
 |---|---|---|
 | [leuchtfeuer/mautic-doi-bundle](https://packagist.org/packages/leuchtfeuer/mautic-doi-bundle) | Double opt-in for forms and segments (GDPR, German UWG) | *Settings → Plugins → Double Opt-In* |
-| [tawk-gmbh/mautic-friendlycaptcha-bundle](https://packagist.org/packages/tawk-gmbh/mautic-friendlycaptcha-bundle) | Friendly Captcha for forms (EU vendor, no cookies) | *Plugins → Friendly Captcha* |
-| [firemultimedia/mautic-multi-captcha-bundle](https://packagist.org/packages/firemultimedia/mautic-multi-captcha-bundle) | hCaptcha, Cloudflare Turnstile, reCAPTCHA | *Plugins → Multi Captcha* |
+| `symfony/{amazon,postmark,brevo,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider HTTP APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `ses+api://KEY:SECRET@default?region=eu-central-1`, `postmark+api://TOKEN@default` |
 
-Mail goes out via **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
-server — no provider API bridges are needed:
+Our default is **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
+server; the bridges are there to switch to a provider API without
+rebuilding the image:
 
 ```yaml
 mautic:

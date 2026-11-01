@@ -2,13 +2,16 @@
 # line; Renovate keeps the pinned versions current (packagist datasource).
 # Only packages that declare Mautic 7 support and are actively maintained.
 # See docs/plugins.md for what each one does and how to configure it.
-#
-# Mail is sent via SMTP (Mautic core) to our Postal server, so no provider
-# API bridges are included.
 
 # Double opt-in for forms and segments (GDPR / German UWG).
 leuchtfeuer/mautic-doi-bundle:7.2.2
 
-# Captchas for Mautic forms.
-tawk-gmbh/mautic-friendlycaptcha-bundle:v5.4.10
-firemultimedia/mautic-multi-captcha-bundle:1.0.9
+# Official Symfony Mailer bridges: send through provider HTTP APIs via
+# MAUTIC_MAILER_DSN as an alternative to SMTP (our default: SMTP to Postal).
+# Pinned to the Symfony minor Mautic uses, so they move together with Mautic.
+symfony/amazon-mailer:7.4.*
+symfony/postmark-mailer:7.4.*
+symfony/brevo-mailer:7.4.*
+symfony/mailgun-mailer:7.4.*
+symfony/sendgrid-mailer:7.4.*
+symfony/mailjet-mailer:7.4.*
