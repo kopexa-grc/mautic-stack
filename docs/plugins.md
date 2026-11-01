@@ -32,6 +32,6 @@ against Mautic 7 or if the smoke test cannot find it in the image.
 
 There is no maintained MCP integration for Mautic yet: the existing
 community servers were written in a few days in spring 2026 and have not
-been updated since. See the discussion in the repository issues before
+been updated since. See [#2](https://github.com/kopexa-grc/mautic-stack/issues/2) before
 picking one; the planned approach is a Mautic plugin built on the official
 PHP MCP SDK (`mcp/sdk`) and `symfony/mcp-bundle`.
