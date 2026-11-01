@@ -127,8 +127,9 @@ kubectl create namespace restore
 kubectl -n restore create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup
 helm install restored "$CHART" -n restore "${common[@]}" \
   --set mautic.siteUrl="https://$RESTORED_HOST" \
-  --set web.replicaCount=0 --set worker.enabled=false --set cron.enabled=false \
-  --wait --timeout 10m
+  --set web.replicaCount=0 --set worker.enabled=false --set cron.enabled=false
+# No --wait: with zero web replicas the data PVC stays Pending under
+# WaitForFirstConsumer storage classes (k3s local-path) until web starts.
 kubectl -n restore rollout status statefulset/restored-mautic-mariadb --timeout=5m
 kubectl -n restore apply -f - <<EOF
 apiVersion: batch/v1
