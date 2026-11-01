@@ -2,6 +2,8 @@
 
 [![image](https://github.com/kopexa-grc/mautic-stack/actions/workflows/image.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/image.yml) [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/kopexa-grc/mautic-stack/badge)](https://scorecard.dev/viewer/?uri=github.com/kopexa-grc/mautic-stack) [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+> Maintained by **[Kopexa](https://kopexa.com)** — GRC and compliance automation. Built on our hardened [kopexa-grc/images](https://github.com/kopexa-grc/images).
+
 Always up-to-date, hardened [Mautic](https://www.mautic.org) for Docker and
 Kubernetes.
 
@@ -149,3 +151,7 @@ Mautic itself is [GPL-3.0](https://github.com/mautic/mautic/blob/7.x/LICENSE.txt
 the image contains Mautic and the packages of its base image under their own
 licenses (see the SBOM attached to each image). This project is not
 affiliated with or endorsed by Mautic or Acquia.
+
+---
+
+Made with care by [Kopexa](https://kopexa.com) · [kopexa-grc on GitHub](https://github.com/kopexa-grc)
