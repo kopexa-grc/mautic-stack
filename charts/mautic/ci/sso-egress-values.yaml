@@ -1,0 +1,28 @@
+# SAML SSO + egress allow-list + global scheduling defaults.
+mautic:
+  siteUrl: https://mautic.example.com
+  saml:
+    enabled: true
+    idpMetadataFrom:
+      configMapKeyRef: {name: keycloak-saml, key: metadata.xml}
+    spCertificateSecret: mautic-saml-sp
+    attributes: {email: email, firstname: firstName, lastname: lastName}
+    defaultRoleId: 2
+networkPolicy:
+  enabled: true
+  egress:
+    enabled: true
+    to:
+      - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8]}}]
+        ports: [{port: 587}, {port: 443}]
+global:
+  nodeSelector: {kubernetes.io/os: linux}
+  priorityClassName: business
+  podLabels: {team: marketing}
+  tolerations: [{key: dedicated, value: marketing, effect: NoSchedule}]
+web:
+  lifecycle: {preStop: {sleep: {seconds: 5}}}
+backup:
+  enabled: true
+  repository: s3:https://s3.example.com/b/mautic
+  existingSecret: mautic-backup

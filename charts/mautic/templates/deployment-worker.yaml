@@ -16,15 +16,14 @@ spec:
     metadata:
       labels:
         {{- include "mautic.componentLabels" (dict "ctx" . "component" "worker") | nindent 8 }}
+        {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.worker) | nindent 8 }}
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 }}
-        {{- with .Values.worker.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "mautic.podAnnotations" (dict "ctx" . "c" .Values.worker) | nindent 8 }}
     spec:
       serviceAccountName: {{ include "mautic.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
-      {{- with .Values.imagePullSecrets }}
+      {{- with (.Values.imagePullSecrets | default .Values.global.imagePullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -57,12 +56,5 @@ spec:
       volumes:
         {{- include "mautic.volumes" . | nindent 8 }}
       {{- include "mautic.affinity" (dict "ctx" . "affinity" .Values.worker.affinity) | nindent 6 }}
-      {{- with .Values.worker.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.worker.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "mautic.scheduling" (dict "ctx" . "c" .Values.worker) | nindent 6 }}
 {{- end }}

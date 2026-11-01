@@ -14,6 +14,24 @@ fullnameOverride: ""
 commonLabels: {}
 commonAnnotations: {}
 
+# -- Defaults for every pod (web, worker, cron, MariaDB, backup). A value set
+# on a component (e.g. worker.nodeSelector) replaces the global one.
+global:
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+  podLabels: {}
+  podAnnotations: {}
+
+# -- Size limits for the emptyDir volumes (/tmp and /app/var) of every Mautic
+# pod, so a runaway process cannot fill the node's disk.
+ephemeral:
+  tmpSizeLimit: 512Mi
+  varSizeLimit: 1Gi
+
 image:
   repository: ghcr.io/kopexa-grc/mautic
   # -- Defaults to the chart's appVersion.
@@ -69,6 +87,30 @@ mautic:
     hit: doctrine://default
     failed: ""
 
+  # Single sign-on via SAML 2.0 (Mautic's built-in SSO), e.g. Keycloak,
+  # Google Workspace, Microsoft Entra ID, Okta, authentik. Password login
+  # stays available as break-glass access for the local admin.
+  saml:
+    enabled: false
+    # -- IdP metadata XML — inline, or (preferred) from a ConfigMap/Secret:
+    #   idpMetadataFrom: {configMapKeyRef: {name: keycloak-saml, key: metadata.xml}}
+    idpMetadata: ""
+    idpMetadataFrom: {}
+    # -- SP entity ID registered at the IdP. Default: scheme://host of siteUrl.
+    entityId: ""
+    # -- Optional SP signing certificate: a kubernetes.io/tls Secret
+    # (tls.crt / tls.key), e.g. issued by cert-manager.
+    spCertificateSecret: ""
+    # -- IdP attribute names (empty = Mautic defaults).
+    attributes:
+      email: ""
+      username: ""
+      firstname: ""
+      lastname: ""
+    # -- Mautic role ID given to users created on their first SSO login.
+    # Create a restricted role first; role 1 is Administrator.
+    defaultRoleId: ""
+
   # -- Any other Mautic parameter (merged last, wins), e.g.
   #   { "default_timezone": "Europe/Berlin", "locale": "de" }
   configParameters: {}
@@ -89,6 +131,10 @@ mautic:
 # ---------------------------------------------------------------------------
 web:
   replicaCount: 1
+  terminationGracePeriodSeconds: 30
+  # -- Container lifecycle hooks, e.g. {preStop: {sleep: {seconds: 5}}}
+  # (Kubernetes >= 1.30) to let the ingress drain connections first.
+  lifecycle: {}
   # -- Defaults to Recreate with a ReadWriteOnce volume, RollingUpdate otherwise.
   strategy: {}
   apache:
@@ -160,9 +206,12 @@ worker:
     limits:
       memory: 512Mi
   podAnnotations: {}
+  podLabels: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
 
 # ---------------------------------------------------------------------------
 # Cron jobs (one Kubernetes CronJob per Mautic command)
@@ -223,9 +272,12 @@ cron:
       schedule: "21 2 * * *"
       args: [mautic:maintenance:cleanup, --days-old=365]
   podAnnotations: {}
+  podLabels: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
 
 # ---------------------------------------------------------------------------
 # Persistence: config/ (local.php written by the installer and the settings
@@ -280,10 +332,28 @@ httpRoute:
 
 networkPolicy:
   # -- Restrict ingress: web only on its HTTP port, MariaDB only from this
-  # release's pods. Egress is not restricted (mail, APIs, webhooks).
+  # release's pods.
   enabled: false
   # -- Peers allowed to reach the web pods. Empty = from anywhere.
   webIngressFrom: []
+  egress:
+    # -- Also restrict egress of all Mautic pods: DNS and the bundled MariaDB
+    # are always allowed, everything else must be listed in `to`. Limits what
+    # an attacker can reach after a code-execution bug (e.g. PHP2Shell).
+    enabled: false
+    # -- Allowed destinations (NetworkPolicy egress rules), e.g. SMTP relay,
+    # external DB, S3 for backups, webhook targets:
+    #   - to: [{ipBlock: {cidr: 10.20.0.0/16}}]
+    #     ports: [{port: 3306}]
+    #   - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8]}}]
+    #     ports: [{port: 587}, {port: 443}]
+    to: []
+    # -- Where cluster DNS runs (for the always-allowed DNS rule).
+    dnsSelector:
+      namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
 
 # ---------------------------------------------------------------------------
 # Bundled MariaDB — convenient for evaluation and small installs.
@@ -323,9 +393,13 @@ mariadb:
       memory: 512Mi
     limits:
       memory: 1Gi
+  podAnnotations: {}
+  podLabels: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
 
 externalDatabase:
   # Each connection field is either a plain value here or read from a key of
@@ -385,12 +459,21 @@ backup:
     digest: ""
     pullPolicy: IfNotPresent
   extraEnv: []
+  # -- Size limit of the scratch volume holding the dump.
+  dumpSizeLimit: 10Gi
   resources:
     requests:
       cpu: 50m
       memory: 128Mi
     limits:
       memory: 512Mi
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
 
 # ---------------------------------------------------------------------------
 # Security (Pod Security Standard "restricted" compatible)
@@ -416,6 +499,15 @@ containerSecurityContext:
   runAsNonRoot: true
   capabilities:
     drop: [ALL]
+
+# -- Resources of the `helm test` pod.
+test:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
 
 # -- Extra manifests rendered with the release (strings are templated).
 extraObjects: []

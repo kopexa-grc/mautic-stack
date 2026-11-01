@@ -26,24 +26,18 @@ spec:
     metadata:
       labels:
         {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 8 }}
-        {{- with .Values.web.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.web) | nindent 8 }}
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 }}
-        {{- with .Values.web.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "mautic.podAnnotations" (dict "ctx" . "c" .Values.web) | nindent 8 }}
     spec:
       serviceAccountName: {{ include "mautic.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
-      {{- with .Values.imagePullSecrets }}
+      {{- with (.Values.imagePullSecrets | default .Values.global.imagePullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.web.priorityClassName }}
-      priorityClassName: {{ . }}
-      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.web.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       enableServiceLinks: false
@@ -109,6 +103,10 @@ spec:
             {{- toYaml $p | nindent 12 }}
           {{- end }}
           {{- end }}
+          {{- with .Values.web.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           volumeMounts:
@@ -124,19 +122,8 @@ spec:
         {{- with .Values.web.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.web.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.web.affinity }}
+      {{- include "mautic.scheduling" (dict "ctx" . "c" .Values.web) | nindent 6 }}
+      {{- with (.Values.web.affinity | default .Values.global.affinity) }}
       affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.web.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.web.topologySpreadConstraints }}
-      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}

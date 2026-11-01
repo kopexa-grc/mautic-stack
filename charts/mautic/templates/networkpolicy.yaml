@@ -57,4 +57,48 @@ spec:
       ports:
         - port: mysql
 {{- end }}
+{{- if .Values.networkPolicy.egress.enabled }}
+---
+# Egress allow-list for every Mautic pod (web, worker, cron, init, backup).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mautic.fullname" . }}-egress
+  labels:
+    {{- include "mautic.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [{{ .Release.Name | quote }}]
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [web, worker, cron, backup, test]
+  policyTypes: [Egress]
+  egress:
+    - to:
+        {{- toYaml (list .Values.networkPolicy.egress.dnsSelector) | nindent 8 }}
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    {{- if .Values.mariadb.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "mautic.componentSelector" (dict "ctx" . "component" "mariadb") | nindent 14 }}
+      ports:
+        - port: 3306
+    {{- end }}
+    # helm test pod -> web
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "mautic.componentSelector" (dict "ctx" . "component" "web") | nindent 14 }}
+      ports:
+        - port: 8080
+    {{- with .Values.networkPolicy.egress.to }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
 {{- end }}

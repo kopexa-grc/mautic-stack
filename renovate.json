@@ -11,12 +11,14 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Mautic version in the Dockerfile",
+      "description": "Mautic version: Dockerfile, Chart appVersion and Artifact Hub image annotation (one PR)",
       "managerFilePatterns": [
-        "/^image/Dockerfile$/"
+        "/^image/Dockerfile$/",
+        "/^charts/mautic/Chart\\.yaml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+ARG MAUTIC_VERSION=(?<currentValue>\\S+)"
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+ARG MAUTIC_VERSION=(?<currentValue>\\S+)",
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+appVersion: \"(?<currentValue>[^\"]+)\""
       ]
     },
     {
@@ -38,6 +40,18 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>[^\\s]+)\\s+[A-Z0-9_]+_VERSION: (?<currentValue>\\S+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Mautic image tag in the Artifact Hub annotation",
+      "managerFilePatterns": [
+        "/^charts/mautic/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image: ghcr\\.io/kopexa-grc/mautic:(?<currentValue>[0-9][0-9.]*)"
+      ],
+      "datasourceTemplate": "packagist",
+      "depNameTemplate": "mautic/recommended-project"
     }
   ],
   "packageRules": [

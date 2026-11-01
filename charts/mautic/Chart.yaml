@@ -1,8 +1,10 @@
 apiVersion: v2
 name: mautic
-description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, optional MariaDB and restic backups.
+description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, optional MariaDB and restic backups.
 type: application
-version: 0.2.2
+# Patch releases are cut automatically by CI whenever the chart changes.
+version: 0.3.0
+# renovate: datasource=packagist depName=mautic/recommended-project
 appVersion: "7.2.2"
 kubeVersion: ">=1.29.0-0"
 home: https://github.com/kopexa-grc/mautic-stack
@@ -10,13 +12,24 @@ sources:
   - https://github.com/kopexa-grc/mautic-stack
   - https://github.com/kopexa-grc/images
   - https://github.com/mautic/mautic
-keywords: [mautic, marketing-automation, email, crm]
+keywords: [mautic, marketing-automation, email, crm, saml, sso]
 maintainers:
   - name: Kopexa
     url: https://kopexa.com
 annotations:
   artifacthub.io/license: Apache-2.0
+  artifacthub.io/operator: "false"
+  artifacthub.io/prerelease: "false"
   artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/kopexa-grc/mautic-stack#readme
+    - name: Hardened base images
+      url: https://github.com/kopexa-grc/images
+    - name: Support
+      url: https://github.com/kopexa-grc/mautic-stack/issues
+    - name: Kopexa
+      url: https://kopexa.com
   artifacthub.io/images: |
     - name: mautic
       image: ghcr.io/kopexa-grc/mautic:7.2.2

@@ -18,12 +18,12 @@ spec:
       command: [/usr/bin/php, -r]
       args:
         - |
-          $ctx = stream_context_create(['http' => ['header' => "Host: {{ include "mautic.siteHost" . }}\r\n", 'follow_location' => 1, 'timeout' => 30]]);
+          $headers = "Host: {{ include "mautic.siteHost" . }}\r\n"{{ if hasPrefix "https://" .Values.mautic.siteUrl }} . "X-Forwarded-Proto: https\r\n"{{ end }};
+          $ctx = stream_context_create(['http' => ['header' => $headers, 'follow_location' => 0, 'timeout' => 30]]);
           $body = @file_get_contents('http://{{ include "mautic.fullname" . }}:{{ .Values.service.port }}/s/login', false, $ctx);
           if ($body === false || !str_contains($body, '_username')) { fwrite(STDERR, "login page not reachable\n"); exit(1); }
           echo "ok: login page rendered\n";
       securityContext:
         {{- toYaml .Values.containerSecurityContext | nindent 8 }}
       resources:
-        limits:
-          memory: 64Mi
+        {{- toYaml .Values.test.resources | nindent 8 }}

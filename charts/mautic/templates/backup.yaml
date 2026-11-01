@@ -22,11 +22,16 @@ spec:
         metadata:
           labels:
             {{- include "mautic.componentLabels" (dict "ctx" . "component" "backup") | nindent 12 }}
+            {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.backup) | nindent 12 }}
+          {{- with (include "mautic.podAnnotations" (dict "ctx" . "c" .Values.backup)) }}
+          annotations:
+            {{- . | nindent 12 }}
+          {{- end }}
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
           enableServiceLinks: false
-          {{- with .Values.imagePullSecrets }}
+          {{- with (.Values.imagePullSecrets | default .Values.global.imagePullSecrets) }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -111,9 +116,11 @@ spec:
                 {{- end }}
           volumes:
             - name: backup
-              emptyDir: {}
+              emptyDir:
+                sizeLimit: {{ .Values.backup.dumpSizeLimit }}
             - name: tmp
-              emptyDir: {}
+              emptyDir:
+                sizeLimit: {{ .Values.ephemeral.tmpSizeLimit }}
             {{- if .Values.backup.includeMedia }}
             - name: data
               {{- if .Values.persistence.enabled }}
@@ -124,7 +131,8 @@ spec:
               emptyDir: {}
               {{- end }}
             {{- end }}
+          {{- include "mautic.scheduling" (dict "ctx" . "c" .Values.backup) | nindent 10 }}
           {{- if .Values.backup.includeMedia }}
-          {{- include "mautic.affinity" (dict "ctx" . "affinity" (dict)) | nindent 10 }}
+          {{- include "mautic.affinity" (dict "ctx" . "affinity" .Values.backup.affinity) | nindent 10 }}
           {{- end }}
 {{- end }}

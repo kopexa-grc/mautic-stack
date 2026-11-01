@@ -183,9 +183,48 @@ upgrades), or a new random one.
   emptyDir: {}
 {{- end }}
 - name: tmp
-  emptyDir: {}
+  emptyDir:
+    sizeLimit: {{ .Values.ephemeral.tmpSizeLimit }}
 - name: var
-  emptyDir: {}
+  emptyDir:
+    sizeLimit: {{ .Values.ephemeral.varSizeLimit }}
+{{- end }}
+
+{{/*
+Scheduling for a pod: component values win, global values are the default.
+  include "mautic.scheduling" (dict "ctx" . "c" .Values.worker)
+*/}}
+{{- define "mautic.scheduling" -}}
+{{- $g := .ctx.Values.global -}}
+{{- with (.c.priorityClassName | default $g.priorityClassName) }}
+priorityClassName: {{ . }}
+{{- end }}
+{{- with (.c.nodeSelector | default $g.nodeSelector) }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with (.c.tolerations | default $g.tolerations) }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with (.c.topologySpreadConstraints | default $g.topologySpreadConstraints) }}
+topologySpreadConstraints:
+  {{- tpl (toYaml .) $.ctx | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/* Extra pod labels: global + component. */}}
+{{- define "mautic.podLabels" -}}
+{{- with (merge (dict) (.c.podLabels | default dict) .ctx.Values.global.podLabels) }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/* Extra pod annotations: global + component. */}}
+{{- define "mautic.podAnnotations" -}}
+{{- with (merge (dict) (.c.podAnnotations | default dict) .ctx.Values.global.podAnnotations) }}
+{{ toYaml . }}
+{{- end }}
 {{- end }}
 
 {{- define "mautic.volumeMounts" -}}
@@ -209,9 +248,10 @@ With a ReadWriteOnce volume, non-web pods must run on the node of the web pod.
   include "mautic.affinity" (dict "ctx" . "affinity" .Values.worker.affinity)
 */}}
 {{- define "mautic.affinity" -}}
-{{- if .affinity }}
+{{- $affinity := .affinity | default .ctx.Values.global.affinity }}
+{{- if $affinity }}
 affinity:
-  {{- toYaml .affinity | nindent 2 }}
+  {{- toYaml $affinity | nindent 2 }}
 {{- else if include "mautic.rwo" .ctx }}
 affinity:
   podAffinity:
@@ -273,6 +313,42 @@ affinity:
 {{- with .Values.mautic.messenger.failed }}
 - name: MAUTIC_MESSENGER_DSN_FAILED
   value: {{ . | quote }}
+{{- end }}
+{{- with .Values.mautic.saml }}
+{{- if .enabled }}
+{{- if not (or .idpMetadata .idpMetadataFrom) }}
+{{- fail "mautic.saml.enabled requires idpMetadata or idpMetadataFrom" }}
+{{- end }}
+- name: MAUTIC_SAML_IDP_METADATA
+  {{- if .idpMetadataFrom }}
+  valueFrom:
+    {{- toYaml .idpMetadataFrom | nindent 4 }}
+  {{- else }}
+  value: {{ .idpMetadata | quote }}
+  {{- end }}
+{{- with .entityId }}
+- name: MAUTIC_SAML_IDP_ENTITY_ID
+  value: {{ . | quote }}
+{{- end }}
+{{- with .spCertificateSecret }}
+- name: MAUTIC_SAML_IDP_OWN_CERTIFICATE
+  valueFrom:
+    secretKeyRef: {name: {{ . }}, key: tls.crt}
+- name: MAUTIC_SAML_IDP_OWN_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef: {name: {{ . }}, key: tls.key}
+{{- end }}
+{{- range $attr, $name := .attributes }}
+{{- if $name }}
+- name: MAUTIC_SAML_IDP_{{ upper $attr }}_ATTRIBUTE
+  value: {{ $name | quote }}
+{{- end }}
+{{- end }}
+{{- with .defaultRoleId }}
+- name: MAUTIC_SAML_IDP_DEFAULT_ROLE
+  value: {{ . | toString | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- with .Values.mautic.configParameters }}
 - name: MAUTIC_CONFIG_PARAMETERS

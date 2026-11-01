@@ -30,15 +30,16 @@ spec:
           labels:
             {{- include "mautic.componentLabels" (dict "ctx" $ctx "component" "cron") | nindent 12 }}
             mautic.kopexa.com/cron: {{ $name }}
-          {{- with $ctx.Values.cron.podAnnotations }}
+            {{- include "mautic.podLabels" (dict "ctx" $ctx "c" $ctx.Values.cron) | nindent 12 }}
+          {{- with (include "mautic.podAnnotations" (dict "ctx" $ctx "c" $ctx.Values.cron)) }}
           annotations:
-            {{- toYaml . | nindent 12 }}
+            {{- . | nindent 12 }}
           {{- end }}
         spec:
           restartPolicy: Never
           serviceAccountName: {{ include "mautic.serviceAccountName" $ctx }}
           automountServiceAccountToken: {{ $ctx.Values.serviceAccount.automountServiceAccountToken }}
-          {{- with $ctx.Values.imagePullSecrets }}
+          {{- with ($ctx.Values.imagePullSecrets | default $ctx.Values.global.imagePullSecrets) }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -66,14 +67,7 @@ spec:
           volumes:
             {{- include "mautic.volumes" $ctx | nindent 12 }}
           {{- include "mautic.affinity" (dict "ctx" $ctx "affinity" $ctx.Values.cron.affinity) | nindent 10 }}
-          {{- with $ctx.Values.cron.nodeSelector }}
-          nodeSelector:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with $ctx.Values.cron.tolerations }}
-          tolerations:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+          {{- include "mautic.scheduling" (dict "ctx" $ctx "c" $ctx.Values.cron) | nindent 10 }}
 {{- end }}
 {{- end }}
 {{- end }}

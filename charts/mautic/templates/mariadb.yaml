@@ -7,7 +7,12 @@ metadata:
   name: {{ $name }}
   labels:
     {{- include "mautic.componentLabels" (dict "ctx" . "component" "mariadb") | nindent 4 }}
-  {{- include "mautic.annotations" . | nindent 2 }}
+  annotations:
+    # The data PVC outlives the release; so must its password.
+    helm.sh/resource-policy: keep
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 type: Opaque
 data:
   mariadb-password: {{ include "mautic.secretValue" (dict "ctx" . "name" $name "key" "mariadb-password" "length" 32) }}
@@ -58,12 +63,14 @@ spec:
     metadata:
       labels:
         {{- include "mautic.componentLabels" (dict "ctx" . "component" "mariadb") | nindent 8 }}
+        {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.mariadb) | nindent 8 }}
       annotations:
         checksum/config: {{ .Values.mariadb.config | sha256sum | trunc 16 }}
+        {{- include "mautic.podAnnotations" (dict "ctx" . "c" .Values.mariadb) | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
-      {{- with .Values.imagePullSecrets }}
+      {{- with (.Values.imagePullSecrets | default .Values.global.imagePullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -144,16 +151,9 @@ spec:
         - name: data
           emptyDir: {}
         {{- end }}
-      {{- with .Values.mariadb.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.mariadb.affinity }}
+      {{- include "mautic.scheduling" (dict "ctx" . "c" .Values.mariadb) | nindent 6 }}
+      {{- with (.Values.mariadb.affinity | default .Values.global.affinity) }}
       affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.mariadb.tolerations }}
-      tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
   {{- if .Values.mariadb.persistence.enabled }}
