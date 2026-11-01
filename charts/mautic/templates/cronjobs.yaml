@@ -1,0 +1,79 @@
+{{- if .Values.cron.enabled }}
+{{- $ctx := . }}
+{{- range $name, $job := .Values.cron.jobs }}
+{{- $j := mergeOverwrite (deepCopy $ctx.Values.cron.defaults) (dict "enabled" true) $job }}
+{{- if $j.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-%s" (include "mautic.fullname" $ctx) $name | trunc 52 | trimSuffix "-" }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" $ctx "component" "cron") | nindent 4 }}
+    mautic.kopexa.com/cron: {{ $name }}
+  {{- include "mautic.annotations" $ctx | nindent 2 }}
+spec:
+  schedule: {{ required (printf "cron.jobs.%s.schedule is required" $name) $j.schedule | quote }}
+  {{- with $j.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  concurrencyPolicy: {{ $j.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ $j.startingDeadlineSeconds }}
+  successfulJobsHistoryLimit: {{ $j.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $j.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $j.backoffLimit }}
+      activeDeadlineSeconds: {{ $j.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "mautic.componentLabels" (dict "ctx" $ctx "component" "cron") | nindent 12 }}
+            mautic.kopexa.com/cron: {{ $name }}
+          {{- with $ctx.Values.cron.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "mautic.serviceAccountName" $ctx }}
+          automountServiceAccountToken: {{ $ctx.Values.serviceAccount.automountServiceAccountToken }}
+          {{- with $ctx.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $ctx.Values.podSecurityContext | nindent 12 }}
+          enableServiceLinks: false
+          containers:
+            - name: cron
+              image: {{ include "mautic.image" $ctx }}
+              imagePullPolicy: {{ $ctx.Values.image.pullPolicy }}
+              args:
+                - console
+                {{- range $j.args }}
+                - {{ . | quote }}
+                {{- end }}
+              env:
+                {{- include "mautic.env" $ctx | nindent 16 }}
+              {{- include "mautic.envFrom" $ctx | nindent 14 }}
+              securityContext:
+                {{- toYaml $ctx.Values.containerSecurityContext | nindent 16 }}
+              resources:
+                {{- toYaml $j.resources | nindent 16 }}
+              volumeMounts:
+                {{- include "mautic.volumeMounts" $ctx | nindent 16 }}
+          volumes:
+            {{- include "mautic.volumes" $ctx | nindent 12 }}
+          {{- include "mautic.affinity" (dict "ctx" $ctx "affinity" $ctx.Values.cron.affinity) | nindent 10 }}
+          {{- with $ctx.Values.cron.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $ctx.Values.cron.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

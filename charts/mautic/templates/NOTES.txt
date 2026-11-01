@@ -1,0 +1,33 @@
+Mautic {{ .Chart.AppVersion }} — release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+URL: {{ .Values.mautic.siteUrl }}
+{{- if not (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
+  No ingress/httpRoute enabled. For a quick look:
+    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mautic.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}
+
+Admin login: {{ .Values.mautic.admin.username }}
+{{- if .Values.mautic.admin.existingSecret }}
+  Password: from secret {{ .Values.mautic.admin.existingSecret }} (key {{ .Values.mautic.admin.passwordKey }})
+{{- else }}
+  Password:
+    kubectl -n {{ .Release.Namespace }} get secret {{ include "mautic.secretName" . }} -o jsonpath='{.data.admin-password}' | base64 -d; echo
+{{- end }}
+
+The first start installs Mautic (init container of the web pod):
+  kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "mautic.fullname" . }} -c init -f
+{{- if .Values.mariadb.enabled }}
+
+WARNING: The bundled MariaDB is a single instance without replication.
+{{- if not .Values.backup.enabled }} Backups are DISABLED (backup.enabled=false).{{ end }}
+For production use a managed database or an operator via externalDatabase.
+{{- end }}
+{{- if and (include "mautic.rwo" .) (or (gt (int .Values.web.replicaCount) 1) .Values.web.autoscaling.enabled) }}
+
+NOTE: persistence uses ReadWriteOnce; all Mautic pods are scheduled onto one node.
+For replicas across nodes use persistence.accessModes=[ReadWriteMany].
+{{- end }}
+{{- if not (or .Values.mautic.mailer.dsn .Values.mautic.mailer.existingSecret) }}
+
+NOTE: No mailer configured (mautic.mailer.dsn / existingSecret) — Mautic cannot send email yet.
+{{- end }}

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mautic.fullname" . }}-test-http
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: http
+      image: {{ include "mautic.image" . }}
+      command: [/usr/bin/php, -r]
+      args:
+        - |
+          $ctx = stream_context_create(['http' => ['header' => "Host: {{ include "mautic.siteHost" . }}\r\n", 'follow_location' => 1, 'timeout' => 30]]);
+          $body = @file_get_contents('http://{{ include "mautic.fullname" . }}:{{ .Values.service.port }}/s/login', false, $ctx);
+          if ($body === false || !str_contains($body, '_username')) { fwrite(STDERR, "login page not reachable\n"); exit(1); }
+          echo "ok: login page rendered\n";
+      securityContext:
+        {{- toYaml .Values.containerSecurityContext | nindent 8 }}
+      resources:
+        limits:
+          memory: 64Mi

@@ -1,0 +1,131 @@
+{{- if .Values.backup.enabled }}
+{{- $dumpImage := .Values.backup.dumpImage | default .Values.mariadb.image }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mautic.fullname" . }}-backup
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "backup") | nindent 4 }}
+  {{- include "mautic.annotations" . | nindent 2 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  {{- with .Values.backup.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "mautic.componentLabels" (dict "ctx" . "component" "backup") | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          initContainers:
+            # 1) Consistent logical dump (InnoDB, no table locks).
+            - name: dump
+              image: {{ include "mautic.imageRef" (dict "image" $dumpImage "default" "11.4") }}
+              imagePullPolicy: {{ $dumpImage.pullPolicy | default "IfNotPresent" }}
+              command: [mariadb-dump]
+              args:
+                - --host={{ include "mautic.db.host" . }}
+                - --port={{ include "mautic.db.port" . }}
+                - --user={{ include "mautic.db.user" . }}
+                - --single-transaction
+                - --quick
+                - --routines
+                - --triggers
+                - --events
+                - --hex-blob
+                - --result-file=/backup/database.sql
+                - {{ include "mautic.db.name" . }}
+              env:
+                - name: MYSQL_PWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mautic.db.secretName" . }}
+                      key: {{ include "mautic.db.secretKey" . }}
+              securityContext:
+                {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            # 2) Encrypted, deduplicated upload + retention with restic.
+            - name: restic
+              image: {{ include "mautic.imageRef" (dict "image" .Values.backup.resticImage "default" "0.19") }}
+              imagePullPolicy: {{ .Values.backup.resticImage.pullPolicy }}
+              command: [/bin/sh, -ec]
+              args:
+                - |
+                  restic cat config >/dev/null 2>&1 || restic init
+                  restic backup --host "$BACKUP_HOST" --tag mautic \
+                    /backup{{ if .Values.backup.includeMedia }} /data/config /data/media{{ end }}
+                  restic forget --host "$BACKUP_HOST" --tag mautic --prune \
+                    --keep-daily {{ .Values.backup.retention.keepDaily }} \
+                    --keep-weekly {{ .Values.backup.retention.keepWeekly }} \
+                    --keep-monthly {{ .Values.backup.retention.keepMonthly }}
+                  restic check --read-data-subset=1%
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: {{ required "backup.repository is required when backup.enabled=true" .Values.backup.repository | quote }}
+                - name: BACKUP_HOST
+                  value: {{ printf "%s/%s" .Release.Namespace (include "mautic.fullname" .) | quote }}
+                {{- with .Values.backup.extraEnv }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              envFrom:
+                - secretRef:
+                    name: {{ required "backup.existingSecret is required (RESTIC_PASSWORD + backend credentials)" .Values.backup.existingSecret }}
+              securityContext:
+                {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+                {{- if .Values.backup.includeMedia }}
+                - name: data
+                  mountPath: /data/config
+                  subPath: config
+                  readOnly: true
+                - name: data
+                  mountPath: /data/media
+                  subPath: media
+                  readOnly: true
+                {{- end }}
+          volumes:
+            - name: backup
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+            {{- if .Values.backup.includeMedia }}
+            - name: data
+              {{- if .Values.persistence.enabled }}
+              persistentVolumeClaim:
+                claimName: {{ include "mautic.claimName" . }}
+                readOnly: true
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+            {{- end }}
+          {{- if .Values.backup.includeMedia }}
+          {{- include "mautic.affinity" (dict "ctx" . "affinity" (dict)) | nindent 10 }}
+          {{- end }}
+{{- end }}

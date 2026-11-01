@@ -1,0 +1,36 @@
+{{- if .Values.web.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mautic.fullname" . }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.web.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "web") | nindent 6 }}
+{{- end }}
+{{- if .Values.web.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mautic.fullname" . }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mautic.fullname" . }}
+  minReplicas: {{ .Values.web.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.web.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.web.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

@@ -1,0 +1,402 @@
+# Default values for the mautic chart.
+#
+# Minimal install (bundled MariaDB, auto-generated admin password):
+#
+#   helm install mautic oci://ghcr.io/kopexa-grc/charts/mautic \
+#     --set mautic.siteUrl=https://mautic.example.com
+#
+# Production: disable the bundled MariaDB and point externalDatabase at a
+# managed database or an operator-run cluster (see docs/production.md).
+
+nameOverride: ""
+fullnameOverride: ""
+# -- Labels/annotations added to every rendered object.
+commonLabels: {}
+commonAnnotations: {}
+
+image:
+  repository: ghcr.io/kopexa-grc/mautic
+  # -- Defaults to the chart's appVersion.
+  tag: ""
+  # -- Pin by digest (takes precedence over tag), e.g. sha256:…
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# ---------------------------------------------------------------------------
+# Mautic configuration (passed as environment, see image entrypoint)
+# ---------------------------------------------------------------------------
+mautic:
+  # -- Public URL of the instance (required), e.g. https://mautic.example.com
+  siteUrl: ""
+
+  # Admin account created on first start (automatic installation).
+  admin:
+    username: admin
+    email: admin@example.com
+    firstname: Admin
+    lastname: Mautic
+    # -- Secret with the admin password. If empty, a random password is
+    # generated once and kept in <release>-mautic (key: admin-password).
+    existingSecret: ""
+    passwordKey: admin-password
+
+  # -- Secret with Mautic's secret_key (key: secret-key). Generated if empty.
+  existingSecret: ""
+
+  # -- Networks whose X-Forwarded-* headers are trusted (ingress / gateway).
+  trustedProxies:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 100.64.0.0/10
+  # -- Allowed Host header patterns (regex). Empty = Mautic default.
+  trustedHosts: []
+
+  mailer:
+    # -- Symfony Mailer DSN, e.g. smtp://user:pass@smtp.example.com:587
+    # Prefer existingSecret, since a DSN usually contains credentials.
+    dsn: ""
+    existingSecret: ""
+    dsnKey: mailer-dsn
+    fromEmail: ""
+    fromName: ""
+
+  # Messenger transports. doctrine://default queues in the database and is
+  # processed by the worker Deployment; sync:// sends inline (no worker).
+  messenger:
+    email: doctrine://default
+    hit: doctrine://default
+    failed: ""
+
+  # -- Any other Mautic parameter (merged last, wins), e.g.
+  #   { "default_timezone": "Europe/Berlin", "locale": "de" }
+  configParameters: {}
+
+  php:
+    memoryLimit: 512M
+    maxExecutionTime: "300"
+    uploadMaxFilesize: 64M
+    postMaxSize: 64M
+    timezone: UTC
+
+  # -- Extra environment for all Mautic containers (web, worker, cron, init).
+  extraEnv: []
+  extraEnvFrom: []
+
+# ---------------------------------------------------------------------------
+# Web (Apache + mod_php)
+# ---------------------------------------------------------------------------
+web:
+  replicaCount: 1
+  # -- Defaults to Recreate with a ReadWriteOnce volume, RollingUpdate otherwise.
+  strategy: {}
+  apache:
+    maxRequestWorkers: 25
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  # -- Probes (override fully to customise). Readiness exercises PHP + Mautic
+  # via the tracking script, liveness only Apache.
+  startupProbe:
+    httpGet: {path: /mtc.js, port: http}
+    periodSeconds: 5
+    failureThreshold: 60
+  readinessProbe:
+    httpGet: {path: /mtc.js, port: http}
+    periodSeconds: 10
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet: {path: /healthz, port: http}
+    periodSeconds: 20
+    timeoutSeconds: 5
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+  extraVolumes: []
+  extraVolumeMounts: []
+  extraInitContainers: []
+  sidecars: []
+  pdb:
+    enabled: false
+    minAvailable: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# Init container in the web pod: waits for the database, installs Mautic on
+# first start and runs migrations (serialised with a database lock).
+init:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# ---------------------------------------------------------------------------
+# Queue workers (messenger:consume)
+# ---------------------------------------------------------------------------
+worker:
+  enabled: true
+  replicaCount: 1
+  transports: [email, hit]
+  # -- Workers exit after this many seconds and are restarted (avoids leaks).
+  timeLimit: 3600
+  memoryLimit: 256M
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# Cron jobs (one Kubernetes CronJob per Mautic command)
+# ---------------------------------------------------------------------------
+cron:
+  enabled: true
+  # -- Defaults applied to every job (override per job).
+  defaults:
+    concurrencyPolicy: Forbid
+    startingDeadlineSeconds: 300
+    successfulJobsHistoryLimit: 1
+    failedJobsHistoryLimit: 3
+    backoffLimit: 0
+    activeDeadlineSeconds: 3600
+    timeZone: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  # -- Map of jobs: name -> {enabled, schedule, args, ...defaults}
+  jobs:
+    segments-update:
+      schedule: "0,15,30,45 * * * *"
+      args: [mautic:segments:update]
+    campaigns-update:
+      schedule: "5,20,35,50 * * * *"
+      args: [mautic:campaigns:update]
+    campaigns-trigger:
+      schedule: "10,25,40,55 * * * *"
+      args: [mautic:campaigns:trigger]
+    broadcasts-send:
+      schedule: "*/5 * * * *"
+      args: [mautic:broadcasts:send]
+    reports-scheduler:
+      schedule: "3 * * * *"
+      args: [mautic:reports:scheduler]
+    import:
+      enabled: false
+      schedule: "*/3 * * * *"
+      args: [mautic:import]
+    webhooks-process:
+      enabled: false
+      schedule: "* * * * *"
+      args: [mautic:webhooks:process]
+    contacts-scheduled-export:
+      enabled: false
+      schedule: "*/3 * * * *"
+      args: [mautic:contacts:scheduled_export]
+    iplookup-download:
+      enabled: false
+      schedule: "11 3 1 * *"
+      args: [mautic:iplookup:download]
+    maintenance-cleanup:
+      # Deletes old data — read the Mautic docs before enabling.
+      enabled: false
+      schedule: "21 2 * * *"
+      args: [mautic:maintenance:cleanup, --days-old=365]
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# Persistence: config/ (local.php written by the installer and the settings
+# UI) and media/{files,images} (uploads), as sub-paths of one volume.
+# ---------------------------------------------------------------------------
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  # -- With ReadWriteOnce, worker/cron/backup pods are scheduled onto the
+  # node of the web pod. Use ReadWriteMany for multiple web replicas across
+  # nodes.
+  accessModes: [ReadWriteOnce]
+  size: 10Gi
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Networking
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  # -- Controller-specific annotations (nginx, traefik, …) go here.
+  annotations: {}
+  hosts:
+    - host: mautic.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: mautic-tls
+  #    hosts: [mautic.example.com]
+
+# Gateway API (Envoy Gateway, Cilium, Istio, Traefik, NGINX Gateway Fabric, …)
+httpRoute:
+  enabled: false
+  annotations: {}
+  # -- e.g. [{name: public-gateway, namespace: gateway-system, sectionName: https}]
+  parentRefs: []
+  hostnames: []
+  # -- Path matches; filters can add headers, redirects, …
+  matches:
+    - path:
+        type: PathPrefix
+        value: /
+  filters: []
+
+networkPolicy:
+  # -- Restrict ingress: web only on its HTTP port, MariaDB only from this
+  # release's pods. Egress is not restricted (mail, APIs, webhooks).
+  enabled: false
+  # -- Peers allowed to reach the web pods. Empty = from anywhere.
+  webIngressFrom: []
+
+# ---------------------------------------------------------------------------
+# Bundled MariaDB — convenient for evaluation and small installs.
+# No replication, no automated failover. For production use a managed
+# database or an operator (e.g. mariadb-operator) via externalDatabase.
+# ---------------------------------------------------------------------------
+mariadb:
+  enabled: true
+  image:
+    repository: docker.io/library/mariadb
+    tag: "11.4"
+    digest: ""
+    pullPolicy: IfNotPresent
+  auth:
+    database: mautic
+    username: mautic
+    # -- Secret with keys mariadb-password and mariadb-root-password.
+    # Generated (and kept across upgrades) if empty.
+    existingSecret: ""
+  # -- Appended to /etc/mysql/conf.d/mautic.cnf
+  config: |
+    [mysqld]
+    character-set-server = utf8mb4
+    collation-server     = utf8mb4_unicode_ci
+    skip-name-resolve
+    max_allowed_packet   = 64M
+    innodb_buffer_pool_size = 256M
+    innodb_log_file_size    = 128M
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes: [ReadWriteOnce]
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+externalDatabase:
+  host: ""
+  port: 3306
+  database: mautic
+  username: mautic
+  # -- Secret holding the password (recommended).
+  existingSecret: ""
+  passwordKey: password
+  # -- Plain password (only if existingSecret is empty; ends up in a Secret).
+  password: ""
+  tablePrefix: ""
+
+# ---------------------------------------------------------------------------
+# Backups: database dump (mariadb-dump) + media, stored with restic
+# (encrypted, deduplicated) in S3 / B2 / Azure / GCS / SFTP / REST.
+# Works with the bundled MariaDB and with externalDatabase.
+# ---------------------------------------------------------------------------
+backup:
+  enabled: false
+  schedule: "17 2 * * *"
+  timeZone: ""
+  # -- restic repository, e.g. s3:https://s3.eu-central-1.amazonaws.com/my-bucket/mautic
+  repository: ""
+  # -- Secret with RESTIC_PASSWORD and backend credentials
+  # (e.g. AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY), injected via envFrom.
+  existingSecret: ""
+  includeMedia: true
+  retention:
+    keepDaily: 7
+    keepWeekly: 4
+    keepMonthly: 6
+  # -- Image used for the dump; defaults to the bundled MariaDB image.
+  dumpImage: {}
+  resticImage:
+    repository: ghcr.io/kopexa-grc/restic
+    tag: "0.19"
+    digest: ""
+    pullPolicy: IfNotPresent
+  extraEnv: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Security (Pod Security Standard "restricted" compatible)
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: [ALL]
+
+# -- Extra manifests rendered with the release (strings are templated).
+extraObjects: []

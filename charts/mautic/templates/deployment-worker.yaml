@@ -1,0 +1,68 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mautic.fullname" . }}-worker
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "worker") | nindent 4 }}
+  {{- include "mautic.annotations" . | nindent 2 }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mautic.componentLabels" (dict "ctx" . "component" "worker") | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 }}
+        {{- with .Values.worker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "mautic.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker
+          image: {{ include "mautic.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - worker
+            {{- range .Values.worker.transports }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            {{- include "mautic.env" . | nindent 12 }}
+            - name: MAUTIC_WORKER_TIME_LIMIT
+              value: {{ .Values.worker.timeLimit | quote }}
+            - name: MAUTIC_WORKER_MEMORY_LIMIT
+              value: {{ .Values.worker.memoryLimit | quote }}
+          {{- include "mautic.envFrom" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "mautic.volumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "mautic.volumes" . | nindent 8 }}
+      {{- include "mautic.affinity" (dict "ctx" . "affinity" .Values.worker.affinity) | nindent 6 }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

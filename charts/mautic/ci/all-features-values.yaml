@@ -1,0 +1,49 @@
+# Renders every optional feature (used by CI for schema validation).
+mautic:
+  siteUrl: https://mautic.example.com
+  trustedHosts: ['^mautic\.example\.com$']
+  mailer:
+    dsn: smtp://user:pass@smtp.example.com:587
+    fromEmail: marketing@example.com
+  configParameters:
+    default_timezone: Europe/Berlin
+web:
+  replicaCount: 2
+  pdb: {enabled: true}
+  autoscaling: {enabled: true}
+persistence:
+  accessModes: [ReadWriteMany]
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: mautic.example.com
+      paths: [{path: /, pathType: Prefix}]
+  tls:
+    - secretName: mautic-tls
+      hosts: [mautic.example.com]
+httpRoute:
+  enabled: true
+  parentRefs: [{name: public, namespace: gateway-system, sectionName: https}]
+  hostnames: [mautic.example.com]
+networkPolicy:
+  enabled: true
+mariadb:
+  enabled: false
+externalDatabase:
+  host: db.example.internal
+  existingSecret: mautic-db
+backup:
+  enabled: true
+  repository: s3:https://s3.eu-central-1.amazonaws.com/backups/mautic
+  existingSecret: mautic-backup
+cron:
+  jobs:
+    import: {enabled: true}
+extraObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: '{{ .Release.Name }}-extra'
+    data:
+      hello: world

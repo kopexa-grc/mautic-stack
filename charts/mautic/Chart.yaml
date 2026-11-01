@@ -1,0 +1,26 @@
+apiVersion: v2
+name: mautic
+description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, optional MariaDB and restic backups.
+type: application
+version: 0.1.0
+appVersion: "7.2.2"
+kubeVersion: ">=1.28.0-0"
+home: https://github.com/kopexa-grc/mautic-stack
+sources:
+  - https://github.com/kopexa-grc/mautic-stack
+  - https://github.com/kopexa-grc/images
+  - https://github.com/mautic/mautic
+keywords: [mautic, marketing-automation, email, crm]
+maintainers:
+  - name: Kopexa
+    url: https://github.com/kopexa-grc
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/images: |
+    - name: mautic
+      image: ghcr.io/kopexa-grc/mautic:7.2.2
+    - name: restic
+      image: ghcr.io/kopexa-grc/restic:0.19
+    - name: mariadb
+      image: docker.io/library/mariadb:11.4

@@ -1,0 +1,137 @@
+{{- $ctx := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mautic.fullname" . }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 4 }}
+  {{- include "mautic.annotations" . | nindent 2 }}
+spec:
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    {{- if .Values.web.strategy }}
+    {{- toYaml .Values.web.strategy | nindent 4 }}
+    {{- else if include "mautic.rwo" . }}
+    type: Recreate
+    {{- else }}
+    type: RollingUpdate
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 8 }}
+        {{- with .Values.web.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 }}
+        {{- with .Values.web.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "mautic.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      enableServiceLinks: false
+      initContainers:
+        - name: init
+          image: {{ include "mautic.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [init]
+          env:
+            {{- include "mautic.env" . | nindent 12 }}
+            - name: MAUTIC_ADMIN_USERNAME
+              value: {{ .Values.mautic.admin.username | quote }}
+            - name: MAUTIC_ADMIN_EMAIL
+              value: {{ .Values.mautic.admin.email | quote }}
+            - name: MAUTIC_ADMIN_FIRSTNAME
+              value: {{ .Values.mautic.admin.firstname | quote }}
+            - name: MAUTIC_ADMIN_LASTNAME
+              value: {{ .Values.mautic.admin.lastname | quote }}
+            - name: MAUTIC_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (include "mautic.secretName" .) .Values.mautic.admin.existingSecret }}
+                  key: {{ if .Values.mautic.admin.existingSecret }}{{ .Values.mautic.admin.passwordKey }}{{ else }}admin-password{{ end }}
+          {{- include "mautic.envFrom" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.init.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "mautic.volumeMounts" . | nindent 12 }}
+        {{- with .Values.web.extraInitContainers }}
+        {{- tpl (toYaml .) $ctx | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: web
+          image: {{ include "mautic.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [web]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- include "mautic.env" . | nindent 12 }}
+            - name: APACHE_MAX_REQUEST_WORKERS
+              value: {{ .Values.web.apache.maxRequestWorkers | quote }}
+          {{- include "mautic.envFrom" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          {{- $host := include "mautic.siteHost" . }}
+          {{- range $probe := list "startupProbe" "readinessProbe" "livenessProbe" }}
+          {{- with index $ctx.Values.web $probe }}
+          {{ $probe }}:
+            {{- $p := deepCopy . }}
+            {{- if and $p.httpGet $host (not $p.httpGet.httpHeaders) }}
+            {{- $_ := set $p.httpGet "httpHeaders" (list (dict "name" "Host" "value" $host)) }}
+            {{- end }}
+            {{- toYaml $p | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "mautic.volumeMounts" . | nindent 12 }}
+            {{- with .Values.web.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- with .Values.web.sidecars }}
+        {{- tpl (toYaml .) $ctx | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- include "mautic.volumes" . | nindent 8 }}
+        {{- with .Values.web.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.web.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

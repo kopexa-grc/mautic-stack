@@ -1,0 +1,60 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mautic.fullname" . }}-web
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "web") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "web") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - port: http
+      {{- with .Values.networkPolicy.webIngressFrom }}
+      from:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# worker and cron pods serve nothing.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mautic.fullname" . }}-jobs
+  labels:
+    {{- include "mautic.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [{{ .Release.Name | quote }}]
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [worker, cron, backup]
+  policyTypes: [Ingress]
+  ingress: []
+{{- if .Values.mariadb.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mautic.mariadb.fullname" . }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "mariadb") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "mariadb") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "mautic.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: mysql
+{{- end }}
+{{- end }}
