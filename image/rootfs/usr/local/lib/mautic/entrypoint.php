@@ -110,12 +110,20 @@ function buildParameters(): array
     return $params;
 }
 
-/** Environment for child processes: current env + resolved parameters. */
+/**
+ * Environment for child processes.
+ *
+ * Mautic itself maps every parameter to an env var MAUTIC_<KEY> (lists as
+ * JSON) and lets real OS env vars win. Our convenience variables share those
+ * names but not the format (e.g. comma lists), so they are removed here and
+ * handed over only through MAUTIC_CONFIG_PARAMETERS; Mautic then derives its
+ * MAUTIC_* variables consistently from the merged configuration.
+ */
 function childEnv(array $params): array
 {
     $environment = getenv();
     foreach (array_keys(PARAMETER_MAP) as $var) {
-        unset($environment[$var.'_FILE']);
+        unset($environment[$var], $environment[$var.'_FILE']);
     }
     $environment['MAUTIC_CONFIG_PARAMETERS'] = json_encode($params, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
