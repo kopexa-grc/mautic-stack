@@ -82,7 +82,8 @@ api() { https -u "admin:$ADMIN_PW" -H 'Accept: application/json' "$@"; }
 
 step "HTTPS through the ingress"
 for _ in $(seq 1 30); do [[ "$(https -o /dev/null -w '%{http_code}' "https://$HOST/s/login")" == 200 ]] && break; sleep 5; done
-https "https://$HOST/s/login" | grep -q 'name="_username"' && pass "login page via ingress" || fail "login page via ingress"
+login_page="$(https "https://$HOST/s/login")"
+grep -q 'name="_username"' <<<"$login_page" && pass "login page via ingress" || fail "login page via ingress"
 loc="$(https -o /dev/null -w '%{redirect_url}' "https://$HOST/s/dashboard")"
 echo "  redirect: $loc"
 [[ "$loc" == "https://$HOST/"* ]] && pass "redirects stay on https (X-Forwarded-Proto trusted)" \
@@ -165,7 +166,8 @@ kubectl -n restore wait --for=condition=complete job/restore --timeout=10m || {
 pass "database restored"
 
 helm upgrade restored "$CHART" -n restore --reuse-values --set web.replicaCount=1 --wait --timeout 10m
-kubectl -n restore logs deploy/restored-mautic -c init | grep -q 'database is empty' \
+init_log="$(kubectl -n restore logs deploy/restored-mautic -c init)"
+grep -q 'database is empty' <<<"$init_log" \
   && fail "init re-installed instead of using the restored database" || pass "init used the restored database"
 kubectl -n restore port-forward svc/restored-mautic 18080:80 >/dev/null 2>&1 &
 pf2=$!; trap 'kill $pf $pf2 2>/dev/null || true' EXIT

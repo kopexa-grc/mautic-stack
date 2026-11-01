@@ -99,7 +99,12 @@ spec:
           {{ $probe }}:
             {{- $p := deepCopy . }}
             {{- if and $p.httpGet $host (not $p.httpGet.httpHeaders) }}
-            {{- $_ := set $p.httpGet "httpHeaders" (list (dict "name" "Host" "value" $host)) }}
+            {{- $headers := list (dict "name" "Host" "value" $host) }}
+            {{- if hasPrefix "https://" $ctx.Values.mautic.siteUrl }}
+            {{- /* Kubelet probes are plain HTTP; without this Mautic answers 301 → https before doing any real work. */}}
+            {{- $headers = append $headers (dict "name" "X-Forwarded-Proto" "value" "https") }}
+            {{- end }}
+            {{- $_ := set $p.httpGet "httpHeaders" $headers }}
             {{- end }}
             {{- toYaml $p | nindent 12 }}
           {{- end }}
