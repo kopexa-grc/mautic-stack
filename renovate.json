@@ -5,12 +5,16 @@
     "helpers:pinGitHubActionDigests",
     ":semanticCommits"
   ],
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "customManagers": [
     {
       "customType": "regex",
       "description": "Mautic version in the Dockerfile",
-      "managerFilePatterns": ["/^image/Dockerfile$/"],
+      "managerFilePatterns": [
+        "/^image/Dockerfile$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+ARG MAUTIC_VERSION=(?<currentValue>\\S+)"
       ]
@@ -18,29 +22,60 @@
     {
       "customType": "regex",
       "description": "Scanner images in workflow env blocks",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>docker) depName=(?<depName>[^\\s]+)\\s+[A-Z_]+_IMAGE: [^:]+:(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Tool versions in workflow env blocks (helm, kubeconform, k3s)",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>[^\\s]+)\\s+[A-Z0-9_]+_VERSION: (?<currentValue>\\S+)"
       ]
     }
   ],
   "packageRules": [
     {
       "description": "Mautic patch releases: automerge once the smoke test passes",
-      "matchDepNames": ["mautic/recommended-project"],
-      "matchUpdateTypes": ["patch"],
+      "matchDepNames": [
+        "mautic/recommended-project"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
       "automerge": true
     },
     {
       "description": "Mautic minor/major releases need a human look (migrations, breaking changes)",
-      "matchDepNames": ["mautic/recommended-project"],
-      "matchUpdateTypes": ["minor", "major"],
+      "matchDepNames": [
+        "mautic/recommended-project"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "major"
+      ],
       "automerge": false,
-      "labels": ["dependencies", "mautic-release"]
+      "labels": [
+        "dependencies",
+        "mautic-release"
+      ]
     },
     {
-      "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch", "digest", "pinDigest"],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pinDigest"
+      ],
       "automerge": true
     }
   ]

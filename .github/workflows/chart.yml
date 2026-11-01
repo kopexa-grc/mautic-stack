@@ -7,9 +7,9 @@ name: chart
 on:
   push:
     branches: [main]
-    paths: [charts/**, image/**, .github/workflows/chart.yml]
+    paths: [charts/**, image/**, test/**, .github/workflows/chart.yml]
   pull_request:
-    paths: [charts/**, image/**, .github/workflows/chart.yml]
+    paths: [charts/**, image/**, test/**, .github/workflows/chart.yml]
   workflow_dispatch:
 
 permissions:
@@ -199,9 +199,48 @@ jobs:
             echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
           done
 
+  e2e-k3s:
+    name: e2e on k3s (ingress, mail, restore)
+    runs-on: ubuntu-24.04
+    needs: lint
+    env:
+      # renovate: datasource=github-releases depName=k3s-io/k3s
+      K3S_VERSION: v1.35.9+k3s1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: image
+          platforms: linux/amd64
+          outputs: type=docker,dest=/tmp/mautic.tar
+          tags: mautic:e2e
+          cache-from: type=gha,scope=amd64
+      - name: Install k3s
+        run: |
+          curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" sh -s - --write-kubeconfig-mode 644
+          echo "KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> "$GITHUB_ENV"
+      - name: Wait for node
+        run: kubectl wait --for=condition=Ready node --all --timeout=3m
+      - name: End-to-end (HTTPS ingress, email via Mailpit, backup + restore)
+        run: test/e2e-k3s.sh /tmp/mautic.tar mautic:e2e
+      - name: Diagnostics
+        if: failure()
+        run: |
+          for ns in mautic restore mail backup-target; do
+            echo "##### $ns"; kubectl -n "$ns" get all,ingress,pvc 2>/dev/null || true
+            for p in $(kubectl -n "$ns" get pods -o name 2>/dev/null); do
+              echo "=== $p"; kubectl -n "$ns" logs "$p" --all-containers --tail=60 || true
+            done
+          done
+
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [e2e, upgrade]
+    needs: [e2e, upgrade, e2e-k3s]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
