@@ -90,9 +90,19 @@ body="$(curl -s "$base/media/images/evil.php")"
 # Login with the auto-installed admin.
 jar="$(mktemp)"
 csrf="$(curl -s -c "$jar" -b "$jar" "$base/s/login" | sed -n 's/.*name="_csrf_token" value="\([^"]*\)".*/\1/p' | head -1)"
-curl -s -o /dev/null -c "$jar" -b "$jar" -d "_username=admin&_password=Sm0ke-Test-Passw0rd!&_csrf_token=$csrf" "$base/s/login_check"
-dash="$(curl -s -b "$jar" -o /dev/null -w '%{http_code}' "$base/s/dashboard")"
-[[ "$dash" == 200 ]] && pass "admin login works" || fail "admin login (dashboard returned $dash)"
+[[ -n "$csrf" ]] || fail "no CSRF token on login page"
+login_to="$(curl -s -o /dev/null -c "$jar" -b "$jar" -w '%{redirect_url}' \
+  -H "Origin: $base" -H "Referer: $base/s/login" \
+  --data-urlencode _username=admin --data-urlencode '_password=Sm0ke-Test-Passw0rd!' \
+  --data-urlencode "_csrf_token=$csrf" "$base/s/login_check")"
+echo "  login_check -> $login_to"
+final="$(curl -s -L -c "$jar" -b "$jar" -o /tmp/mautic-smoke-page.html -w '%{http_code} %{url_effective}' "$base/s/dashboard")"
+echo "  dashboard   -> $final"
+if grep -q 'name="_username"' /tmp/mautic-smoke-page.html || [[ "$final" != 200* ]]; then
+  grep -o '<div class="alert[^<]*<[^<]*' /tmp/mautic-smoke-page.html | head -3 || true
+  fail "admin login"
+fi
+pass "admin login works"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \
