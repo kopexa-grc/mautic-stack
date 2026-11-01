@@ -105,7 +105,8 @@ kubectl -n mail port-forward svc/mailpit 18025:8025 >/dev/null 2>&1 &
 pf=$!; trap 'kill $pf 2>/dev/null || true' EXIT
 mid=""
 for _ in $(seq 1 60); do
-  mid="$(curl -s localhost:18025/api/v1/messages 2>/dev/null | jq -r --arg s "$subject" '.messages[]? | select(.Subject == $s) | .ID' | head -1)"
+  # port-forward may not be ready yet: tolerate connection errors and retry
+  mid="$( (curl -s localhost:18025/api/v1/messages || true) | jq -r --arg s "$subject" '.messages[]? | select(.Subject == $s) | .ID' 2>/dev/null | head -1 || true)"
   [[ -n "$mid" ]] && break; sleep 5
 done
 [[ -n "$mid" ]] && pass "email arrived in Mailpit" || {
@@ -171,7 +172,7 @@ grep -q 'database is empty' <<<"$init_log" \
   && fail "init re-installed instead of using the restored database" || pass "init used the restored database"
 kubectl -n restore port-forward svc/restored-mautic 18080:80 >/dev/null 2>&1 &
 pf2=$!; trap 'kill $pf $pf2 2>/dev/null || true' EXIT
-sleep 3
+for _ in $(seq 1 20); do curl -s -o /dev/null localhost:18080/healthz && break; sleep 1; done
 found="$(curl -s -u "admin:$ADMIN_PW" -H "Host: $RESTORED_HOST" -H 'X-Forwarded-Proto: https' \
   "http://127.0.0.1:18080/api/contacts?search=e2e@example.com" | jq -r '.total // empty')"
 [[ "$found" == 1 ]] && pass "contact and admin login survived backup + restore" || fail "restored data (total=$found)"
