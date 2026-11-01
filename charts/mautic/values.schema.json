@@ -160,6 +160,18 @@
             }
           }
         },
+        "postal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "jwksUrl": {
+              "type": "string"
+            },
+            "publicKeyFrom": {
+              "type": "object"
+            }
+          }
+        },
         "messenger": {
           "type": "object",
           "additionalProperties": false,

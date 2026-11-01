@@ -80,6 +80,17 @@ mautic:
     fromEmail: ""
     fromName: ""
 
+  # Postal bounce handling (kopexa/mautic-postal-bundle). Point a Postal
+  # webhook (events MessageBounced, MessageDeliveryFailed) at
+  # https://<siteUrl>/mailer/callback.
+  postal:
+    # -- Postal's JWKS, e.g. https://postal.example.com/.well-known/jwks.json
+    # (allow egress to it when networkPolicy.egress is enabled).
+    jwksUrl: ""
+    # -- Alternatively the webhook public key (PEM) from a Secret/ConfigMap:
+    #   publicKeyFrom: {secretKeyRef: {name: postal-webhook, key: public.pem}}
+    publicKeyFrom: {}
+
   # Messenger transports. doctrine://default queues in the database and is
   # processed by the worker Deployment; sync:// sends inline (no worker).
   messenger:

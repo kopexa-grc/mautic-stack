@@ -350,6 +350,15 @@ affinity:
 {{- end }}
 {{- end }}
 {{- end }}
+{{- with .Values.mautic.postal.jwksUrl }}
+- name: MAUTIC_POSTAL_JWKS_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.mautic.postal.publicKeyFrom }}
+- name: MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY
+  valueFrom:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 {{- with .Values.mautic.configParameters }}
 - name: MAUTIC_CONFIG_PARAMETERS
   value: {{ toJson . | quote }}

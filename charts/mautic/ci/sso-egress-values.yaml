@@ -1,4 +1,4 @@
-# SAML SSO + egress allow-list + global scheduling defaults.
+# SAML SSO + Postal bounce webhooks + egress allow-list + global scheduling defaults.
 mautic:
   siteUrl: https://mautic.example.com
   saml:
@@ -8,6 +8,8 @@ mautic:
     spCertificateSecret: mautic-saml-sp
     attributes: {email: email, firstname: firstName, lastname: lastName}
     defaultRoleId: 2
+  postal:
+    jwksUrl: https://postal.example.com/.well-known/jwks.json
 networkPolicy:
   enabled: true
   egress:

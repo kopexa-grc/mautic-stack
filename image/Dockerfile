@@ -29,11 +29,17 @@ RUN composer create-project --no-progress --no-dev \
       --ignore-platform-req=ext-imap \
       "mautic/recommended-project:${MAUTIC_VERSION}" mautic
 
-# Built-in extensions (image/plugins.txt).
+# Built-in extensions: third-party packages (image/plugins.txt) and our own
+# bundles (image/extensions/*, installed from a local path repository).
 COPY plugins.txt /build/plugins.txt
+COPY extensions/ /build/extensions/
 RUN cd mautic \
- && grep -vE '^\s*(#|$)' /build/plugins.txt | xargs composer require --no-progress \
-      --update-no-dev --ignore-platform-req=ext-imap
+ && composer config repositories.kopexa '{"type": "path", "url": "/build/extensions/*", "options": {"symlink": false}}' \
+ && { grep -vE '^\s*(#|$)' /build/plugins.txt; \
+      for f in /build/extensions/*/composer.json; do \
+        php -r '$c = json_decode(file_get_contents($argv[1]), true); echo $c["name"], ":", $c["version"], "\n";' "$f"; \
+      done; } \
+    | xargs composer require --no-progress --update-no-dev --ignore-platform-req=ext-imap
 
 WORKDIR /build/mautic
 # Writable directories are moved out of the tree at the end: COPY --chown only

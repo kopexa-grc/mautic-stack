@@ -14,7 +14,7 @@ import sys
 FREE_FORM = {
     "commonLabels", "commonAnnotations",
     "global.nodeSelector", "global.affinity", "global.podLabels", "global.podAnnotations",
-    "mautic.configParameters", "mautic.saml.idpMetadataFrom",
+    "mautic.configParameters", "mautic.saml.idpMetadataFrom", "mautic.postal.publicKeyFrom",
     "web.strategy", "web.lifecycle", "web.podAnnotations", "web.podLabels", "web.nodeSelector", "web.affinity",
     "web.startupProbe", "web.readinessProbe", "web.livenessProbe",
     "worker.podAnnotations", "worker.podLabels", "worker.nodeSelector", "worker.affinity",

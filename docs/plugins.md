@@ -13,6 +13,7 @@ months, and a clear need for our use cases.
 | Extension | What for | Configure in Mautic |
 |---|---|---|
 | [leuchtfeuer/mautic-doi-bundle](https://packagist.org/packages/leuchtfeuer/mautic-doi-bundle) | Double opt-in for forms and segments (GDPR, German UWG) | *Settings → Plugins → Double Opt-In* |
+| [kopexa/mautic-postal-bundle](../image/extensions/mautic-postal-bundle) (ours) | **Postal bounces:** signed `MessageBounced` / hard `MessageDeliveryFailed` webhooks mark the contact *Do Not Contact – bounced* | `mautic.postal.jwksUrl`; in Postal add a webhook to `https://<mautic>/mailer/callback` — see its [README](../image/extensions/mautic-postal-bundle/README.md) |
 | `symfony/{amazon,postmark,brevo,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider HTTP APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `ses+api://KEY:SECRET@default?region=eu-central-1`, `postmark+api://TOKEN@default` |
 
 Our default is **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
@@ -35,8 +36,10 @@ List what is installed in a running image:
 docker run --rm ghcr.io/kopexa-grc/mautic:7 plugins
 ```
 
-Add your own extension: append `vendor/package:version` to
-`image/plugins.txt` and open a PR. CI fails if Composer cannot resolve it
+Add a third-party extension: append `vendor/package:version` to
+`image/plugins.txt` and open a PR. Our own bundles live in
+`image/extensions/<name>/` and are installed automatically from a local
+Composer path repository. CI fails if Composer cannot resolve it
 against Mautic 7 or if the smoke test cannot find it in the image.
 
 ## MCP

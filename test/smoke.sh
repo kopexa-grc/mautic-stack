@@ -47,6 +47,10 @@ env=(
   -e MAUTIC_TRUSTED_PROXIES=172.16.0.0/12
   -e MAUTIC_MESSENGER_DSN_EMAIL=doctrine://default -e MAUTIC_MESSENGER_DSN_HIT=doctrine://default
 )
+# Postal webhook signing key (the test plays the Postal server).
+postal_key="$(mktemp)"; openssl genrsa -out "$postal_key" 2048 2>/dev/null
+env+=(-e MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY="$(openssl rsa -in "$postal_key" -pubout 2>/dev/null)")
+env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
 secret="$(mktemp)"; echo mautic >"$secret"; chmod 644 "$secret"
 env+=(-v "$secret:/run/secrets/db-password:ro")
 
@@ -103,6 +107,28 @@ if grep -q 'name="_username"' /tmp/mautic-smoke-page.html || [[ "$final" != 200*
   fail "admin login"
 fi
 pass "admin login works"
+
+echo "Postal bounce webhook (kopexa/mautic-postal-bundle)"
+api() { curl -s -u 'admin:Sm0ke-Test-Passw0rd!' -H 'Accept: application/json' "$@"; }
+cid="$(api -X POST "$base/api/contacts/new" -d email=bounce@example.com | jq -r '.contact.id')"
+[[ "$cid" =~ ^[0-9]+$ ]] || fail "contact for bounce test"
+postal() { # $1 = body, $2 = key used for signing
+  local sig; sig="$(printf '%s' "$1" | openssl dgst -sha256 -sign "$2" | base64 -w0)"
+  curl -s -o /tmp/postal-resp -w '%{http_code}' -X POST "$base/mailer/callback" \
+    -H 'Content-Type: application/json' -H "X-Postal-Signature-256: $sig" --data-binary "$1"
+}
+bounce='{"event":"MessageBounced","timestamp":1793500000.1,"uuid":"e2e-1","payload":{"original_message":{"id":1,"direction":"outgoing","to":"bounce@example.com","subject":"E2E"},"bounce":{"id":2}}}'
+wrong_key="$(mktemp)"; openssl genrsa -out "$wrong_key" 2048 2>/dev/null
+[[ "$(postal "$bounce" "$wrong_key")" == 403 ]] && pass "webhook with wrong signature rejected (403)" || fail "bad signature accepted"
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/mailer/callback" -d '{}')" == 404 ]] \
+  && pass "unsigned request left to other transports (404)" || fail "unsigned request handled"
+[[ "$(postal "$bounce" "$postal_key")" == 200 ]] && jq -e '.handled == true' /tmp/postal-resp >/dev/null \
+  && pass "signed MessageBounced accepted" || { cat /tmp/postal-resp; fail "signed bounce"; }
+dnc="$(api "$base/api/contacts/$cid" | jq -r '.contact.doNotContact[0].reason // empty')"
+[[ "$dnc" == 2 ]] && pass "contact marked Do Not Contact: bounced" || fail "contact not marked bounced (reason=$dnc)"
+delayed='{"event":"MessageDelayed","payload":{"message":{"direction":"outgoing","to":"bounce@example.com"},"status":"SoftFail"}}'
+[[ "$(postal "$delayed" "$postal_key")" == 200 ]] && jq -e '.handled == false' /tmp/postal-resp >/dev/null \
+  && pass "soft failures are ignored" || fail "soft failure handling"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \

@@ -65,6 +65,9 @@ const PARAMETER_MAP = [
     'MAUTIC_SAML_IDP_FIRSTNAME_ATTRIBUTE' => ['saml_idp_firstname_attribute', 'string'],
     'MAUTIC_SAML_IDP_LASTNAME_ATTRIBUTE'  => ['saml_idp_lastname_attribute', 'string'],
     'MAUTIC_SAML_IDP_DEFAULT_ROLE'        => ['saml_idp_default_role', 'string'],
+    // kopexa/mautic-postal-bundle: verify Postal webhook signatures.
+    'MAUTIC_POSTAL_JWKS_URL'              => ['postal_jwks_url', 'string'],
+    'MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY'    => ['postal_webhook_public_key', 'string'],
 ];
 
 function logmsg(string $msg): void
@@ -380,7 +383,7 @@ switch ($cmd) {
         // Built-in extensions (image/plugins.txt) with installed versions.
         $installed = json_decode((string) file_get_contents(APP_ROOT.'/vendor/composer/installed.json'), true);
         foreach ($installed['packages'] ?? [] as $package) {
-            if (in_array($package['type'] ?? '', ['mautic-plugin', 'symfony-mailer-bridge'], true)
+            if (in_array($package['type'] ?? '', ['mautic-plugin', 'mautic-theme', 'symfony-mailer-bridge'], true)
                 || str_ends_with($package['name'], '-mailer')) {
                 printf("%s %s\n", $package['name'], $package['version']);
             }
