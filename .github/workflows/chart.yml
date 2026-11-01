@@ -57,8 +57,14 @@ jobs:
           helm template test "$CHART" 2>&1 | grep -q 'mautic.siteUrl is required'
 
   e2e:
+    name: e2e (k8s ${{ matrix.k8s }})
     runs-on: ubuntu-24.04
     needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        # oldest supported (Chart.yaml kubeVersion), a middle one, newest
+        k8s: [v1.29.14, v1.32.11, v1.35.8]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
@@ -76,6 +82,7 @@ jobs:
       - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         with:
           cluster_name: e2e
+          node_image: kindest/node:${{ matrix.k8s }}
       - name: Load image into kind
         run: kind load docker-image mautic:e2e --name e2e
 
@@ -141,9 +148,60 @@ jobs:
             echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
           done
 
+  upgrade:
+    name: upgrade from last release
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: image
+          platforms: linux/amd64
+          load: true
+          tags: mautic:e2e
+          cache-from: type=gha,scope=amd64
+      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        with:
+          cluster_name: upgrade
+      - name: Load image into kind
+        run: kind load docker-image mautic:e2e --name upgrade
+      - name: Install last published chart with its published image
+        id: prev
+        run: |
+          prev="$(helm show chart "oci://ghcr.io/${{ github.repository_owner }}/charts/mautic" | sed -n 's/^version: //p')"
+          echo "version=$prev" >> "$GITHUB_OUTPUT"
+          echo "Upgrading from chart $prev" >> "$GITHUB_STEP_SUMMARY"
+          helm install mautic "oci://ghcr.io/${{ github.repository_owner }}/charts/mautic" --version "$prev" \
+            -n mautic --create-namespace -f "$CHART/ci/default-values.yaml" --wait --timeout 15m
+          helm test mautic -n mautic
+          # Data written before the upgrade must survive it.
+          kubectl -n mautic get secret mautic -o jsonpath='{.data.admin-password}' > /tmp/admin-before
+      - name: Upgrade to this commit (chart + image)
+        run: |
+          helm upgrade mautic "$CHART" -n mautic -f "$CHART/ci/default-values.yaml" \
+            --set image.repository=mautic --set image.tag=e2e --set image.pullPolicy=Never \
+            --wait --timeout 15m
+          helm test mautic -n mautic --logs
+          kubectl -n mautic get secret mautic -o jsonpath='{.data.admin-password}' > /tmp/admin-after
+          cmp /tmp/admin-before /tmp/admin-after && echo "generated secrets kept across upgrade"
+          kubectl -n mautic logs deploy/mautic -c init | tail -5
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl -n mautic get all,pvc
+          for p in $(kubectl -n mautic get pods -o name); do
+            echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
+          done
+
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: e2e
+    needs: [e2e, upgrade]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -180,6 +238,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2.0.3
+        if: steps.check.outputs.exists != 'true'
+      - name: Publish Artifact Hub metadata
+        if: steps.check.outputs.exists != 'true'
+        run: |
+          oras push "ghcr.io/${{ github.repository_owner }}/charts/mautic:artifacthub.io" \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
       - name: Sign chart and tag release
         if: steps.check.outputs.exists != 'true'
         run: |
