@@ -262,8 +262,8 @@ jq -e '.result.serverInfo.name == "Mautic"' <<<"$init" >/dev/null && [[ -n "$MCP
   && pass "initialize (session stored in the database)" || { echo "$init"; cat /tmp/mcp-headers; fail "MCP initialize"; }
 mcp "$access" '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
 tools="$(mcp "$access" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')"
-[[ "$(jq '.result.tools | length' <<<"$tools")" == 15 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
-  && pass "tools/list: 15 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
+[[ "$(jq '.result.tools | length' <<<"$tools")" == 18 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
+  && pass "tools/list: 18 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
 call() { mcp "$1" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$2"'","arguments":'"$3"'}}'; }
 result() { jq -r '.result.content[0].text // empty' <<<"$1"; }
 found="$(call "$access" search_contacts '{"search":"bounce@example.com"}')"
@@ -329,6 +329,37 @@ docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console ma
 trigger="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:trigger -i "$campid" 2>&1)"
 grep -qE '[1-9][0-9]* total events? (were|was) executed' <<<"$trigger" \
   && pass "Mautic executes the flow (campaigns:trigger: $(grep -oE '[0-9]+ total events? (were|was) executed' <<<"$trigger" | head -1))" || { echo "$trigger" | tail -15; fail "campaign flow did not run"; }
+# Editing the RUNNING campaign (published, one contact on its way).
+live="$(result "$(call "$access" get_campaign "{\"id\":$campid}")")"
+reminder_id="$(jq -r '.steps[] | select(.path == "no") | .key' <<<"$live")"
+welcome_id="$(jq -r '.steps[] | select(.parent == null) | .key' <<<"$live")"
+jq -e '(.steps | length == 4) and all(.steps[]; .key | test("^[0-9]+$")) and .published == true' <<<"$live" >/dev/null \
+  && pass "get_campaign returns the flow in set_campaign_steps format (keys = step IDs; welcome executed for $(jq -r --arg k "$welcome_id" '.steps[] | select(.key == $k) | .contacts.executed' <<<"$live") contact)" || { echo "$live" | head -c 1500; fail "get_campaign steps"; }
+same="$(call "$access" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c '[.steps[] | del(.kind, .contacts)]' <<<"$live")}")"
+jq -e '(.changes.added | length) == 0 and (.changes.changed | length) == 0 and (.changes.removed | length) == 0 and (.changes.unchanged | length) == 4' <<<"$(result "$same")" >/dev/null \
+  && pass "round trip: get_campaign -> set_campaign_steps changes nothing" || { echo "$same" | head -c 1500; fail "round trip"; }
+upd="$(result "$(call "$access" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\",\"wait\":{\"interval\":5,\"unit\":\"d\"}}")")"
+jq -e --arg k "$reminder_id" '(.changes.changed == [{"key": $k, "name": .changes.changed[0].name, "fields": ["wait"]}]) and ([.steps[] | select(.key == $k) | .wait] == [{"interval": 5, "unit": "d"}]) and .published == true' <<<"$upd" >/dev/null \
+  && pass "update_campaign_step on a running campaign: wait 3 -> 5 days, same step ID" || { echo "$upd" | head -c 1500; fail "update_campaign_step"; }
+added="$(result "$(call "$access" add_campaign_step "{\"campaignId\":$campid,\"step\":{\"key\":\"bonus\",\"type\":\"lead.changepoints\",\"parent\":\"$reminder_id\",\"properties\":{\"points\":5}}}")")"
+bonus_id="$(jq -r '.steps[] | select(.parent == "'"$reminder_id"'") | .key' <<<"$added")"
+jq -e '(.changes.added | length == 1) and (.steps | length == 5)' <<<"$added" >/dev/null && [[ "$bonus_id" =~ ^[0-9]+$ ]] \
+  && pass "add_campaign_step on a running campaign" || { echo "$added" | head -c 1500; fail "add_campaign_step"; }
+moved="$(call "$access" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c --arg r "$reminder_id" --arg w "$welcome_id" '[.steps[] | del(.kind, .contacts) | if .key == $r then .parent = $w | del(.path) else . end]' <<<"$added")}")"
+grep -q 'cannot be moved' <<<"$(result "$moved")" && pass "steps of a running campaign cannot be moved" || { echo "$moved" | head -c 800; fail "move on running campaign accepted"; }
+haskids="$(call "$access" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\"}")"
+grep -q 'has following steps' <<<"$(result "$haskids")" && pass "steps with following steps are not removed" || { echo "$haskids" | head -c 800; fail "removed step with children"; }
+noconfirm="$(call "$access" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\"}")"
+dry="$(result "$(call "$access" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\",\"dryRun\":true}")")"
+grep -q 'allow_deletions' <<<"$(result "$noconfirm")" && jq -e --arg k "$bonus_id" '.dry_run == true and .changes.removed[0].key == $k and (.changes.removed[0] | has("contacts_scheduled"))' <<<"$dry" >/dev/null \
+  && [[ "$(api "$base/api/campaigns/$campid" | jq '.campaign.events | length')" == 5 ]] \
+  && pass "removing from a running campaign needs confirmation; dryRun reports affected contacts" || { echo "$noconfirm $dry" | head -c 1500; fail "removal safeguards"; }
+gone="$(result "$(call "$access" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\",\"confirm\":true,\"redirectTo\":\"$reminder_id\"}")")"
+row="$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT deleted IS NOT NULL, redirect_event_id FROM campaign_events WHERE id = $bonus_id" 2>/dev/null)"
+jq -e '(.changes.removed | length == 1) and (.steps | length == 4)' <<<"$gone" >/dev/null && [[ "$(tr -s '[:space:]' ' ' <<<"$row" | sed 's/ $//')" == "1 $reminder_id" ]] \
+  && pass "remove_campaign_step with confirm (contacts redirected to the reminder)" || { echo "$gone" | head -c 1500; fail "remove_campaign_step"; }
+docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:trigger -i "$campid" >/dev/null 2>&1 \
+  && pass "campaign keeps running after the edits (campaigns:trigger)" || fail "campaigns:trigger after edits"
 stats="$(result "$(call "$access" get_email_stats "{\"id\":$eid}")")"
 jq -e '.sent == 1 and (.links | type == "array")' <<<"$stats" >/dev/null && pass "get_email_stats (the campaign sent the welcome email)" || { echo "$stats"; fail "get_email_stats"; }
 # A user whose role may only work on their own emails sees no contacts.

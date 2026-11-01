@@ -45,14 +45,17 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `list_segments` | `mcp:read` | Segments with contact counts |
 | `list_emails`, `get_email` | `mcp:read` | Emails with type, status, statistics, HTML |
 | `get_email_stats` | `mcp:read` | Sent, read, read rate, clicks per link, pending recipients |
-| `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their event tree |
+| `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their flow (in the `set_campaign_steps` format, with contacts per step) |
 | `create_email_draft` | `mcp:write` | New **unpublished** email (HTML, subject, preheader, segments) |
 | `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email |
 | `list_campaign_step_types` | `mcp:read` | Available actions, decisions and conditions (including those of installed plugins) |
 | `describe_campaign_step_type` | `mcp:read` | Properties of a step type (names, required, choices), which steps it may follow |
 | `create_campaign_draft` | `mcp:write` | New **unpublished** campaign with segment source |
 | `update_campaign_draft` | `mcp:write` | Change name, description, segments of an unpublished campaign |
-| `set_campaign_steps` | `mcp:write` | Set the complete flow of an unpublished campaign: actions, decisions, conditions, waits, yes/no branches |
+| `set_campaign_steps` | `mcp:write` | Set the complete flow: actions, decisions, conditions, waits, yes/no branches (applied as a diff) |
+| `update_campaign_step` | `mcp:write` | Change one step (name, wait, properties), also in a running campaign |
+| `add_campaign_step` | `mcp:write` | Add one step, also to a running campaign |
+| `remove_campaign_step` | `mcp:write` | Remove one step; in a running campaign only after `dryRun` + `confirm`, optionally redirecting waiting contacts |
 
 ### Campaign flows
 
@@ -86,8 +89,41 @@ Steps are validated the way the builder validates them:
   - the `no` path of a decision needs a `wait` (how long the contact has to act)
 - **Emails:** campaigns can only send template emails, and the user must be
   allowed to see them.
-- **All or nothing:** an invalid flow changes nothing. A valid one
-  replaces all steps of the draft in one transaction.
+- **All or nothing:** an invalid flow changes nothing. A valid one is
+  saved in one transaction.
+
+### Editing campaigns, including running ones
+
+`get_campaign` returns the flow in exactly the format `set_campaign_steps`
+accepts. The key of an existing step is its Mautic event ID, so the
+assistant can read, change and send back without translating. Changes are
+applied as a **diff**, the way Mautic's own API does:
+
+| In the submitted flow | Effect |
+|---|---|
+| Key = existing step ID | Updated in place. The step keeps its ID, so contacts on their way and the statistics stay attached. Omitted `name`, `wait` and properties stay as they are. |
+| New, non-numeric key | Step is added |
+| Existing step left out | Step is removed |
+
+For small edits there are single-step tools: `update_campaign_step`,
+`add_campaign_step` and `remove_campaign_step`. Each reports what was
+added, changed, removed and left unchanged. With `dryRun: true` it only
+reports and saves nothing.
+
+**Running (published) campaigns** can be edited too, with safeguards for
+the contacts already in the flow:
+
+| Change | Running campaign |
+|---|---|
+| Name, wait, properties of a step (e.g. 3 → 5 days, other email) | allowed. Contacts already scheduled on the step keep their time; the change applies to contacts reaching it from now on. |
+| Add steps | allowed |
+| Move steps (other parent or path) | refused. Contacts would suddenly be on a different branch. |
+| Remove steps | only after a `dryRun`, which shows how many contacts are scheduled on the step, and with `confirm` / `allow_deletions`. `redirectTo` / `redirects` move waiting contacts to another step (Mautic's own redirect mechanism). Steps that have following steps cannot be removed one by one. |
+| Change the type of a step | refused, also in drafts (remove it and add a new one) |
+
+Publishing, unpublishing and sending stay with a person in Mautic. Every
+change is written to the audit log with what was added, changed and
+removed.
 
 **Nothing is sent or published through MCP.** Write tools only create and
 change drafts. Published or already sent items are refused. A person
@@ -143,6 +179,13 @@ disabled Mautic user loses access immediately, even with a valid token.
 - `insufficient_scope` for a read-only token
 - segments, campaign drafts and statistics
 - a complete campaign flow (email → opened? → points / reminder after 3 days), the builder rules, and Mautic's campaign cron executing it
+- editing the running campaign:
+  - an unchanged round trip
+  - wait 3 → 5 days with the step ID kept
+  - adding a step
+  - refused moves
+  - removal only after dry run and confirmation, with the redirect stored in the database
+  - the cron keeps running afterwards
 - a restricted role that sees no contacts
 
 `test/e2e-k3s.sh` checks discovery and the 401 challenge through the HTTPS
