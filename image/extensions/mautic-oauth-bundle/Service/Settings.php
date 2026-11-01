@@ -79,6 +79,18 @@ class Settings
         return self::base64Url(hash('sha256', json_encode(['e' => $jwk['e'], 'kty' => 'RSA', 'n' => $jwk['n']], JSON_UNESCAPED_SLASHES), true));
     }
 
+    /** Public half of the signing key (PEM), for resource servers in this instance. */
+    public function publicKeyPem(): string
+    {
+        $key     = openssl_pkey_get_private($this->privateKey());
+        $details = false !== $key ? openssl_pkey_get_details($key) : false;
+        if (!is_array($details) || !isset($details['key'])) {
+            throw new \RuntimeException('kopexa_oauth_private_key is not a valid RSA private key');
+        }
+
+        return $details['key'];
+    }
+
     /** @return array<string, string> */
     public function publicJwk(): array
     {

@@ -16,6 +16,14 @@ Kubernetes.
   backups, SAML single sign-on (Keycloak, Google Workspace, Entra ID, …),
   ingress and egress NetworkPolicies, Pod Security "restricted", validated
   values (`values.schema.json`).
+- **AI assistants via MCP** — built-in [MCP server](docs/mcp.md) at
+  `/mcp` for Claude, ChatGPT and other clients, with standard OAuth 2.1
+  login (PKCE, dynamic client registration) against Mautic itself. The
+  assistant can read contacts, segments, emails, campaigns and statistics,
+  and writes drafts only, with the user's Mautic permissions.
+- **Built-in extensions** — Postal bounce handling, Kopexa email theme with
+  a deliverability gate, double opt-in, Symfony mailer bridges
+  ([docs/plugins.md](docs/plugins.md)).
 - **Automatic updates** — Renovate opens a PR for every Mautic release on
   Packagist; patch releases are merged automatically once the end-to-end
   tests pass.
@@ -115,7 +123,8 @@ Mautic supports MySQL/MariaDB only (no PostgreSQL, so no CloudNativePG).
 
 See [docs/production.md](docs/production.md) (sizing, scaling, storage,
 upgrades), [docs/backup.md](docs/backup.md) (backup and restore),
-[docs/oauth.md](docs/oauth.md) (OAuth 2.1 for MCP clients such as Claude and ChatGPT),
+[docs/mcp.md](docs/mcp.md) (connect Claude, ChatGPT and other AI assistants via MCP),
+[docs/oauth.md](docs/oauth.md) (OAuth 2.1 authorization server),
 [docs/postal.md](docs/postal.md) (sending via Postal, bounce webhooks on
 `/mailer/callback`) and [docs/sso.md](docs/sso.md) (SAML single sign-on).
 

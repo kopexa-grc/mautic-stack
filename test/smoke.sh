@@ -97,13 +97,13 @@ body="$(curl -s "$base/media/images/evil.php")"
 [[ "$body" != *PWNED* ]] && pass "uploaded PHP does not execute" || fail "uploaded PHP executed"
 
 # Login with the auto-installed admin.
-login_as_admin() { # $1 = cookie jar; prints where login_check redirects to
+login_as_admin() { # $1 = cookie jar, [$2 = user, $3 = password]; prints where login_check redirects to
   local csrf
   csrf="$(curl -s -c "$1" -b "$1" "$base/s/login" | sed -n 's/.*name="_csrf_token" value="\([^"]*\)".*/\1/p' | head -1)"
   [[ -n "$csrf" ]] || fail "no CSRF token on login page"
   curl -s -o /dev/null -c "$1" -b "$1" -w '%{redirect_url}' \
     -H "Origin: $base" -H "Referer: $base/s/login" \
-    --data-urlencode _username=admin --data-urlencode '_password=Sm0ke-Test-Passw0rd!' \
+    --data-urlencode "_username=${2:-admin}" --data-urlencode "_password=${3:-Sm0ke-Test-Passw0rd!}" \
     --data-urlencode "_csrf_token=$csrf" "$base/s/login_check"
 }
 jar="$(mktemp)"
@@ -178,7 +178,7 @@ authz() { # $1 = code_challenge_method, $2 = curl cookie jar (or empty)
     --data-urlencode response_type=code --data-urlencode "client_id=$client_id" \
     --data-urlencode "redirect_uri=$redirect" --data-urlencode "code_challenge=$challenge" \
     --data-urlencode "code_challenge_method=$1" --data-urlencode state=smoke-state \
-    --data-urlencode 'scope=mcp:read mcp:write' --data-urlencode "resource=$resource"
+    --data-urlencode "scope=${SCOPE:-mcp:read mcp:write}" --data-urlencode "resource=$resource"
 }
 fresh_jar="$(mktemp)"
 [[ "$(authz S256 "$fresh_jar")" == *"/s/login"* ]] && pass "authorization requires Mautic login" || fail "authorize without login"
@@ -231,6 +231,84 @@ pass "refresh token grant"
 
 authz S256 "$jar" >/dev/null
 [[ "$(decide deny)" == "$redirect?"*"error=access_denied"* ]] && pass "denied consent returns access_denied" || fail "deny"
+
+echo "MCP server (kopexa/mautic-mcp-bundle)"
+# A second, read-only token for the scope checks.
+SCOPE=mcp:read authz S256 "$jar" >/dev/null
+location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
+[[ "$(code_grant "$verifier")" == 200 ]] || fail "read-only token"
+read_token="$(jq -r .access_token /tmp/oauth-resp)"
+
+prm="$(curl -s "$base/.well-known/oauth-protected-resource/mcp")"
+jq -e --arg r "$resource" '.resource == $r and .authorization_servers == ["http://localhost:8080"]' <<<"$prm" >/dev/null \
+  && pass "RFC 9728 protected resource metadata" || { echo "$prm"; fail "resource metadata"; }
+mcp() { # $1 = token, $2 = JSON-RPC body; prints the JSON-RPC response (JSON or SSE)
+  local out
+  out="$(curl -s -D /tmp/mcp-headers -X POST "$base/mcp" -H 'Host: localhost:8080' \
+    -H "Authorization: Bearer $1" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    -H 'MCP-Protocol-Version: 2025-06-18' ${MCP_SESSION:+-H "Mcp-Session-Id: $MCP_SESSION"} --data-binary "$2")"
+  if grep -qi '^content-type: text/event-stream' /tmp/mcp-headers; then sed -n 's/^data: //p' <<<"$out" | tail -1; else printf '%s' "$out"; fi
+}
+unauth="$(curl -s -o /dev/null -D - -X POST "$base/mcp" -H 'Host: localhost:8080' -H 'Content-Type: application/json' -d '{}')"
+grep -q '^HTTP/1.1 401' <<<"$unauth" && grep -qi '^www-authenticate: Bearer.*resource_metadata=' <<<"$unauth" \
+  && pass "no token: 401 with WWW-Authenticate resource_metadata" || { echo "$unauth"; fail "unauthenticated MCP request"; }
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/mcp" -H 'Host: localhost:8080' -H 'Authorization: Bearer x.y.z' -H 'Content-Type: application/json' -d '{}')" == 401 ]] \
+  && pass "forged token rejected" || fail "forged token accepted"
+
+init="$(mcp "$access" '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}')"
+MCP_SESSION="$(sed -n 's/^[Mm]cp-[Ss]ession-[Ii]d: *\([^[:space:]]*\).*/\1/p' /tmp/mcp-headers)"
+jq -e '.result.serverInfo.name == "Mautic"' <<<"$init" >/dev/null && [[ -n "$MCP_SESSION" ]] \
+  && pass "initialize (session stored in the database)" || { echo "$init"; cat /tmp/mcp-headers; fail "MCP initialize"; }
+mcp "$access" '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
+tools="$(mcp "$access" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')"
+[[ "$(jq '.result.tools | length' <<<"$tools")" == 12 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
+  && pass "tools/list: 12 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
+call() { mcp "$1" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$2"'","arguments":'"$3"'}}'; }
+result() { jq -r '.result.content[0].text // empty' <<<"$1"; }
+found="$(call "$access" search_contacts '{"search":"bounce@example.com"}')"
+jq -e '.contacts[0].email == "bounce@example.com"' <<<"$(result "$found")" >/dev/null \
+  && pass "search_contacts finds the contact" || { echo "$found" | head -c 600; fail "search_contacts"; }
+contact="$(result "$(call "$access" get_contact "{\"id\":$cid}")")"
+jq -e '.do_not_contact[0].reason == "bounced"' <<<"$contact" >/dev/null \
+  && pass "get_contact shows Do Not Contact (bounced)" || { echo "$contact" | head -c 600; fail "get_contact"; }
+draft="$(call "$access" create_email_draft '{"name":"MCP smoke draft","subject":"Hallo","html":"<html><body><p>Hi</p>{unsubscribe_text}</body></html>","type":"template"}')"
+eid="$(result "$draft" | jq -r '.id // empty')"
+[[ "$eid" =~ ^[0-9]+$ ]] && [[ "$(result "$draft" | jq -r .published)" == false ]] \
+  && pass "create_email_draft creates an unpublished email" || { echo "$draft" | head -c 600; fail "create_email_draft"; }
+upd="$(call "$access" update_email_draft "{\"id\":$eid,\"subject\":\"Hallo Welt\"}")"
+[[ "$(api "$base/api/emails/$eid" | jq -r .email.subject)" == "Hallo Welt" ]] \
+  && pass "update_email_draft changes the draft" || { echo "$upd" | head -c 600; fail "update_email_draft"; }
+api -X PATCH "$base/api/emails/$eid/edit" -d isPublished=1 >/dev/null
+locked="$(call "$access" update_email_draft "{\"id\":$eid,\"subject\":\"changed\"}")"
+grep -q 'Only unpublished drafts' <<<"$(result "$locked")" && [[ "$(api "$base/api/emails/$eid" | jq -r .email.subject)" == "Hallo Welt" ]] \
+  && pass "published emails cannot be changed via MCP" || { echo "$locked" | head -c 600; fail "published email changed"; }
+denied="$(call "$read_token" create_email_draft '{"name":"x","subject":"x","html":"<p>x</p>"}')"
+grep -q '^HTTP/1.1 403' /tmp/mcp-headers && grep -qi '^www-authenticate:.*insufficient_scope' /tmp/mcp-headers \
+  && pass "write tools need the mcp:write scope (403 insufficient_scope)" || { cat /tmp/mcp-headers; echo "$denied" | head -c 600; fail "read-only token could write"; }
+reads="$(call "$read_token" list_emails '{"search":"MCP smoke"}')"
+jq -e '.total >= 1' <<<"$(result "$reads")" >/dev/null && pass "read tools work with the mcp:read scope" || { echo "$reads" | head -c 600; fail "list_emails"; }
+sid="$(api -X POST "$base/api/segments/new" -d name='MCP smoke segment' -d isPublished=1 | jq -r '.list.id')"
+segs="$(result "$(call "$access" list_segments '{"search":"MCP smoke"}')")"
+jq -e --argjson id "$sid" '.segments[0].id == $id' <<<"$segs" >/dev/null && pass "list_segments" || { echo "$segs"; fail "list_segments"; }
+camp="$(call "$access" create_campaign_draft "{\"name\":\"MCP smoke campaign\",\"segmentIds\":[$sid]}")"
+campid="$(result "$camp" | jq -r '.id // empty')"
+[[ "$campid" =~ ^[0-9]+$ ]] && jq -e --argjson id "$sid" '.segments[0].id == $id and .published == false' <<<"$(result "$(call "$access" get_campaign "{\"id\":$campid}")")" >/dev/null \
+  && pass "create_campaign_draft + get_campaign (unpublished, segment source)" || { echo "$camp" | head -c 600; fail "campaign draft"; }
+stats="$(result "$(call "$access" get_email_stats "{\"id\":$eid}")")"
+jq -e '.sent == 0 and (.links | type == "array")' <<<"$stats" >/dev/null && pass "get_email_stats" || { echo "$stats"; fail "get_email_stats"; }
+# A user whose role may only work on their own emails sees no contacts.
+rid="$(api -X POST "$base/api/roles/new" -d name='AI Editor (smoke)' -d isAdmin=0 \
+  -d 'rawPermissions[email:emails][]=viewown' -d 'rawPermissions[email:emails][]=create' -d 'rawPermissions[email:emails][]=editown' | jq -r '.role.id')"
+api -X POST "$base/api/users/new" -d username=ai-editor -d firstName=AI -d lastName=Editor -d email=ai-editor@example.com \
+  -d "role=$rid" -d 'plainPassword[password]=Ai-Ed1tor-Passw0rd!' -d 'plainPassword[confirm]=Ai-Ed1tor-Passw0rd!' >/dev/null
+jar="$(mktemp)"; login_as_admin "$jar" ai-editor 'Ai-Ed1tor-Passw0rd!' >/dev/null
+authz S256 "$jar" >/dev/null; location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
+[[ "$(code_grant "$verifier")" == 200 ]] || fail "token for restricted user"
+editor_token="$(jq -r .access_token /tmp/oauth-resp)"
+nope="$(call "$editor_token" search_contacts '{"search":"bounce"}')"
+own="$(call "$editor_token" create_email_draft '{"name":"Editor draft","subject":"x","html":"<p>x</p>"}')"
+grep -q 'role does not allow' <<<"$(result "$nope")" && [[ "$(result "$own" | jq -r '.published')" == false ]] \
+  && pass "tools respect the Mautic role of the user (no contacts, own email drafts)" || { echo "$nope $own" | head -c 800; fail "Mautic permissions not applied"; }
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \

@@ -105,13 +105,19 @@ echo "  redirect: $loc"
 [[ "$loc" == "https://$HOST/"* ]] && pass "redirects stay on https (X-Forwarded-Proto trusted)" \
   || fail "redirect is not https://$HOST/… — trusted proxies not applied"
 
-step "OAuth 2.1 discovery through the ingress"
+step "OAuth 2.1 + MCP discovery through the ingress"
 meta="$(https "https://$HOST/.well-known/oauth-authorization-server")"
 jq -e --arg h "https://$HOST" '.issuer == $h and .token_endpoint == ($h + "/oauth2/token")
   and .code_challenge_methods_supported == ["S256"]' <<<"$meta" >/dev/null \
   && pass "authorization server metadata (issuer https://$HOST)" || { echo "$meta"; fail "OAuth metadata"; }
 kid1="$(https "https://$HOST/oauth2/jwks.json" | jq -r '.keys[0].kid')"
 [[ -n "$kid1" && "$kid1" != null ]] && pass "JWKS served (chart-generated signing key)" || fail "JWKS"
+prm="$(https "https://$HOST/.well-known/oauth-protected-resource/mcp")"
+jq -e --arg h "https://$HOST" '.resource == ($h + "/mcp") and .authorization_servers == [$h]' <<<"$prm" >/dev/null \
+  && pass "MCP protected resource metadata" || { echo "$prm"; fail "MCP resource metadata"; }
+mcp_unauth="$(https -o /dev/null -D - -X POST "https://$HOST/mcp" -H 'Content-Type: application/json' -d '{}')"
+grep -qi "^www-authenticate: Bearer.*resource_metadata=\"https://$HOST/" <<<"$mcp_unauth" \
+  && pass "MCP endpoint asks for OAuth through the ingress" || { echo "$mcp_unauth"; fail "MCP endpoint"; }
 
 step "Egress allow-list is enforced"
 blocked="$(kubectl -n "$NS" exec deploy/mautic-worker -- /usr/bin/php -r '

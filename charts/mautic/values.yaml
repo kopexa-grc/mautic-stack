@@ -91,10 +91,11 @@ mautic:
     #   publicKeyFrom: {secretKeyRef: {name: postal-webhook, key: public.pem}}
     publicKeyFrom: {}
 
-  # OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle) for MCP
-  # clients such as Claude and ChatGPT: authorization code + PKCE (S256),
+  # OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle) and with it
+  # the MCP server at <siteUrl>/mcp (kopexa/mautic-mcp-bundle) for Claude,
+  # ChatGPT and other AI assistants: authorization code + PKCE (S256),
   # dynamic client registration, consent behind Mautic's login (password or
-  # SAML SSO). See docs/oauth.md.
+  # SAML SSO). See docs/mcp.md and docs/oauth.md.
   oauth:
     enabled: false
     # -- Secret with `oauth-private-key` (RSA private key, PEM; signs access
