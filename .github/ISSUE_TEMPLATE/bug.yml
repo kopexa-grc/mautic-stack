@@ -1,0 +1,28 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Image tag / chart version
+      description: e.g. ghcr.io/kopexa-grc/mautic:7.2.2, chart 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Commands, values.yaml snippets, Dockerfile — whatever is needed.
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: text

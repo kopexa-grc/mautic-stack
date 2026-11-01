@@ -1,5 +1,7 @@
 # mautic-stack
 
+[![image](https://github.com/kopexa-grc/mautic-stack/actions/workflows/image.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/image.yml) [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/kopexa-grc/mautic-stack/badge)](https://scorecard.dev/viewer/?uri=github.com/kopexa-grc/mautic-stack) [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Always up-to-date, hardened [Mautic](https://www.mautic.org) for Docker and
 Kubernetes.
 
