@@ -1,0 +1,27 @@
+name: k3s
+description: Build the Mautic image as a tarball and start a single-node k3s cluster.
+inputs:
+  version:
+    description: k3s release, e.g. v1.35.9+k3s1
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+    - name: Build image
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: image
+        platforms: linux/amd64
+        outputs: type=docker,dest=/tmp/mautic.tar
+        tags: mautic:e2e
+        cache-from: type=gha,scope=amd64
+    - name: Install k3s
+      shell: bash
+      env:
+        K3S_VERSION: ${{ inputs.version }}
+      run: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" sh -s - --write-kubeconfig-mode 644
+        echo "KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> "$GITHUB_ENV"
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl wait --for=condition=Ready node --all --timeout=3m

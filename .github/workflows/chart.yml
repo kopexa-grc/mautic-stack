@@ -1,7 +1,7 @@
 name: chart
 
 # Lint + schema validation of every values file in charts/mautic/ci, an
-# end-to-end install on kind (MariaDB, web, worker, cron, restic backup), and
+# end-to-end install on k3s (restricted PSS, NetworkPolicies, HTTPS ingress, email, backup + restore) on three Kubernetes versions, an upgrade from the last release, and
 # OCI release of the chart when its version changes on main.
 
 on:
@@ -57,190 +57,57 @@ jobs:
           helm template test "$CHART" 2>&1 | grep -q 'mautic.siteUrl is required'
 
   e2e:
-    name: e2e (k8s ${{ matrix.k8s }})
+    name: e2e on k3s ${{ matrix.k3s }}
     runs-on: ubuntu-24.04
     needs: lint
     strategy:
       fail-fast: false
       matrix:
         # oldest supported (Chart.yaml kubeVersion), a middle one, newest
-        k8s: [v1.29.14, v1.32.11, v1.35.8]
+        k3s: [v1.29.15+k3s1, v1.32.13+k3s1, v1.35.9+k3s1]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: ${{ env.HELM_VERSION }}
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - uses: ./.github/actions/k3s
         with:
-          context: image
-          platforms: linux/amd64
-          load: true
-          tags: mautic:e2e
-          cache-from: type=gha,scope=amd64
-      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
-        with:
-          cluster_name: e2e
-          node_image: kindest/node:${{ matrix.k8s }}
-      - name: Load image into kind
-        run: kind load docker-image mautic:e2e --name e2e
-
-      - name: Backup target (restic rest-server, separate namespace)
-        run: |
-          kubectl create namespace backup-target
-          kubectl -n backup-target create deployment rest-server --image=restic/rest-server:0.14.0 --port=8000
-          kubectl -n backup-target set env deployment/rest-server DISABLE_AUTHENTICATION=1
-          kubectl -n backup-target expose deployment rest-server --port 8000
-          kubectl -n backup-target rollout status deployment/rest-server --timeout 3m
-          kubectl create namespace mautic
-          kubectl -n mautic create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup-password
-
-      - name: helm install
-        run: |
-          helm install mautic "$CHART" -n mautic \
-            -f "$CHART/ci/default-values.yaml" \
-            --set image.repository=mautic --set image.tag=e2e --set image.pullPolicy=Never \
-            --set mautic.messenger.email=doctrine://default \
-            --set backup.enabled=true \
-            --set backup.repository=rest:http://rest-server.backup-target:8000/mautic \
-            --set backup.existingSecret=mautic-backup \
-            --set networkPolicy.enabled=true \
-            --wait --timeout 15m
-
-      - name: helm test (login page through the Service)
-        run: helm test mautic -n mautic --logs
-
-      - name: Pods comply with Pod Security "restricted"
-        run: |
-          kubectl label namespace mautic pod-security.kubernetes.io/enforce=restricted --overwrite --dry-run=server 2>&1 | tee /tmp/psa.txt
-          if grep -qi "violate" /tmp/psa.txt; then exit 1; fi
-
-      - name: Worker is running
-        run: kubectl -n mautic rollout status deploy/mautic-worker --timeout 5m
-
-      - name: Cron job runs
-        run: |
-          kubectl -n mautic create job seg-e2e --from=cronjob/mautic-segments-update
-          kubectl -n mautic wait --for=condition=complete job/seg-e2e --timeout 5m
-
-      - name: Backup runs and is restorable
-        run: |
-          kubectl -n mautic create job backup-e2e --from=cronjob/mautic-backup
-          kubectl -n mautic wait --for=condition=complete job/backup-e2e --timeout 10m
-          kubectl -n mautic logs job/backup-e2e -c restic | tail -20
-          kubectl -n backup-target run restic-ls --rm -i --restart=Never \
-            --image=ghcr.io/kopexa-grc/restic:0.19 --env=RESTIC_PASSWORD=e2e-backup-password \
-            -- ls latest -r rest:http://rest-server:8000/mautic | tee /tmp/ls.txt
-          grep -q '/backup/database.sql' /tmp/ls.txt
-
-      - name: Upgrade is a no-op for data (re-runs init)
-        run: |
-          helm upgrade mautic "$CHART" -n mautic --reuse-values --set web.podAnnotations.e2e=upgrade --wait --timeout 10m
-          helm test mautic -n mautic
-
-      - name: Diagnostics
-        if: failure()
-        run: |
-          kubectl -n mautic get all,pvc,secrets
-          kubectl -n mautic describe pods | tail -100
-          for p in $(kubectl -n mautic get pods -o name); do
-            echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
-          done
-
-  upgrade:
-    name: upgrade from last release
-    runs-on: ubuntu-24.04
-    needs: lint
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-        with:
-          version: ${{ env.HELM_VERSION }}
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: image
-          platforms: linux/amd64
-          load: true
-          tags: mautic:e2e
-          cache-from: type=gha,scope=amd64
-      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
-        with:
-          cluster_name: upgrade
-      - name: Load image into kind
-        run: kind load docker-image mautic:e2e --name upgrade
-      - name: Install last published chart with its published image
-        id: prev
-        run: |
-          prev="$(helm show chart "oci://ghcr.io/${{ github.repository_owner }}/charts/mautic" | sed -n 's/^version: //p')"
-          echo "version=$prev" >> "$GITHUB_OUTPUT"
-          echo "Upgrading from chart $prev" >> "$GITHUB_STEP_SUMMARY"
-          helm install mautic "oci://ghcr.io/${{ github.repository_owner }}/charts/mautic" --version "$prev" \
-            -n mautic --create-namespace -f "$CHART/ci/default-values.yaml" --wait --timeout 15m
-          helm test mautic -n mautic
-          # Data written before the upgrade must survive it.
-          kubectl -n mautic get secret mautic -o jsonpath='{.data.admin-password}' > /tmp/admin-before
-      - name: Upgrade to this commit (chart + image)
-        run: |
-          helm upgrade mautic "$CHART" -n mautic -f "$CHART/ci/default-values.yaml" \
-            --set image.repository=mautic --set image.tag=e2e --set image.pullPolicy=Never \
-            --wait --timeout 15m
-          helm test mautic -n mautic --logs
-          kubectl -n mautic get secret mautic -o jsonpath='{.data.admin-password}' > /tmp/admin-after
-          cmp /tmp/admin-before /tmp/admin-after && echo "generated secrets kept across upgrade"
-          kubectl -n mautic logs deploy/mautic -c init | tail -5
-      - name: Diagnostics
-        if: failure()
-        run: |
-          kubectl -n mautic get all,pvc
-          for p in $(kubectl -n mautic get pods -o name); do
-            echo "=== $p"; kubectl -n mautic logs "$p" --all-containers --tail=60 || true
-          done
-
-  e2e-k3s:
-    name: e2e on k3s (ingress, mail, restore)
-    runs-on: ubuntu-24.04
-    needs: lint
-    env:
-      # renovate: datasource=github-releases depName=k3s-io/k3s
-      K3S_VERSION: v1.35.9+k3s1
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-        with:
-          version: ${{ env.HELM_VERSION }}
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: image
-          platforms: linux/amd64
-          outputs: type=docker,dest=/tmp/mautic.tar
-          tags: mautic:e2e
-          cache-from: type=gha,scope=amd64
-      - name: Install k3s
-        run: |
-          curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" sh -s - --write-kubeconfig-mode 644
-          echo "KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> "$GITHUB_ENV"
-      - name: Wait for node
-        run: kubectl wait --for=condition=Ready node --all --timeout=3m
-      - name: End-to-end (HTTPS ingress, email via Mailpit, backup + restore)
+          version: ${{ matrix.k3s }}
+      - name: End-to-end (restricted PSS, NetworkPolicies, HTTPS ingress, email, backup + restore)
         run: test/e2e-k3s.sh /tmp/mautic.tar mautic:e2e
       - name: Diagnostics
         if: failure()
-        run: |
-          for ns in mautic restore mail backup-target; do
-            echo "##### $ns"; kubectl -n "$ns" get all,ingress,pvc 2>/dev/null || true
+        run: &diagnostics |
+          for ns in mautic mautic-upgrade restore mail backup-target; do
+            kubectl get ns "$ns" >/dev/null 2>&1 || continue
+            echo "##### $ns"; kubectl -n "$ns" get all,ingress,pvc,events 2>/dev/null | tail -60 || true
             for p in $(kubectl -n "$ns" get pods -o name 2>/dev/null); do
               echo "=== $p"; kubectl -n "$ns" logs "$p" --all-containers --tail=60 || true
             done
           done
 
+  upgrade:
+    name: upgrade from last release (k3s)
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - uses: ./.github/actions/k3s
+        with:
+          # renovate: datasource=github-releases depName=k3s-io/k3s
+          version: v1.35.9+k3s1
+      - name: Upgrade last published chart + image to this commit
+        run: test/upgrade-k3s.sh /tmp/mautic.tar mautic:e2e
+      - name: Diagnostics
+        if: failure()
+        run: *diagnostics
+
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [e2e, upgrade, e2e-k3s]
+    needs: [e2e, upgrade]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

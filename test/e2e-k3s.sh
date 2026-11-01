@@ -64,6 +64,9 @@ common=(
 
 step "Install Mautic behind HTTPS ingress"
 kubectl create namespace "$NS"
+# Enforce (not just audit) Pod Security "restricted": every pod of the chart
+# — web, worker, cron, MariaDB, backup, helm test — must be admitted.
+kubectl label namespace "$NS" pod-security.kubernetes.io/enforce=restricted
 kubectl -n "$NS" create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup
 helm install mautic "$CHART" -n "$NS" "${common[@]}" \
   --set mautic.siteUrl="https://$HOST" \
@@ -74,8 +77,16 @@ helm install mautic "$CHART" -n "$NS" "${common[@]}" \
   --set "ingress.hosts[0].paths[0].path=/" --set "ingress.hosts[0].paths[0].pathType=Prefix" \
   --set "ingress.tls[0].hosts[0]=$HOST" \
   --set backup.enabled=true \
+  --set networkPolicy.enabled=true \
   --wait --timeout 15m
-pass "installed"
+pass "installed (Pod Security restricted enforced, NetworkPolicies on)"
+
+step "Cluster checks"
+helm test mautic -n "$NS" --logs >/dev/null && pass "helm test" || fail "helm test"
+kubectl -n "$NS" rollout status deploy/mautic-worker --timeout=5m >/dev/null && pass "worker running" || fail "worker"
+kubectl -n "$NS" create job seg-e2e --from=cronjob/mautic-segments-update >/dev/null
+kubectl -n "$NS" wait --for=condition=complete job/seg-e2e --timeout=5m >/dev/null \
+  && pass "cron job mautic:segments:update" || fail "cron job"
 
 ADMIN_PW="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.admin-password}' | base64 -d)"
 api() { https -u "admin:$ADMIN_PW" -H 'Accept: application/json' "$@"; }
