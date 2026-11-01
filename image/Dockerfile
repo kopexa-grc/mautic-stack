@@ -36,7 +36,7 @@ RUN npm ci --no-audit --no-fund \
  && php bin/console mautic:assets:generate \
  && find node_modules -mindepth 1 -maxdepth 1 \
       -not \( -name jquery -o -name vimeo-froogaloop2 \) -exec rm -rf {} + \
- && rm -rf var/cache/* var/logs/* var/tmp/* \
+ && rm -rf var/* \
  && mkdir -p config var/cache var/logs var/tmp var/spool \
              docroot/media/files docroot/media/images \
  && mkdir -p /build/writable/media \
