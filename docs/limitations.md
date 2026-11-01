@@ -21,3 +21,16 @@ intentional: what runs is exactly what was built, scanned and signed.
 
 Parameters provided through the environment (database, site URL, mailer,
 trusted proxies, …) always win over values saved in the configuration UI.
+
+## Middlewares ignore MAUTIC_CONFIG_PARAMETERS (upstream bug, worked around)
+
+Mautic's HTTP middlewares (`TrustMiddleware` for `trusted_proxies` /
+`trusted_hosts`, CORS, HSTS) read only `config/local.php` and
+`config/parameters_local.php`, not the `MAUTIC_CONFIG_PARAMETERS`
+environment variable. Behind a TLS-terminating ingress this makes Mautic
+treat every request as plain HTTP (redirect loops, `http://` links).
+
+The image works around it: at every start the entrypoint writes a managed
+`config/parameters_local.php` that reads `MAUTIC_CONFIG_PARAMETERS`. Do not
+edit that file — put overrides into the environment or `local.php` instead.
+The k3s end-to-end test checks HTTPS redirects behind Traefik for this.

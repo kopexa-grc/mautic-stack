@@ -207,6 +207,35 @@ function ensureVarDirs(): void
     }
 }
 
+/**
+ * Mautic's HTTP middlewares (TrustMiddleware: trusted_proxies, trusted_hosts;
+ * CORS, HSTS) run before the kernel boots and read only config/local.php and
+ * config/parameters_local.php — they ignore MAUTIC_CONFIG_PARAMETERS. Without
+ * this file, trusted proxies set through the environment have no effect and
+ * Mautic behind a TLS-terminating ingress sees every request as plain HTTP.
+ *
+ * parameters_local.php has the same precedence as the environment (both
+ * override local.php), so reading the environment here changes nothing else.
+ */
+const PARAMETERS_LOCAL = <<<'PHP'
+<?php
+// Managed by the container entrypoint (kopexa-grc/mautic-stack); rewritten at
+// every start. Makes MAUTIC_CONFIG_PARAMETERS visible to Mautic's middlewares.
+$parameters = json_decode((string) getenv('MAUTIC_CONFIG_PARAMETERS'), true) ?: [];
+
+PHP;
+
+function writeParametersLocal(): void
+{
+    $file = APP_ROOT.'/config/parameters_local.php';
+    if (is_file($file) && PARAMETERS_LOCAL === file_get_contents($file)) {
+        return;
+    }
+    if (!is_writable(dirname($file)) || false === @file_put_contents($file.'.tmp', PARAMETERS_LOCAL) || !@rename($file.'.tmp', $file)) {
+        logmsg("WARNING: cannot write $file — trusted proxies/hosts from the environment will not apply");
+    }
+}
+
 function ensureLocalConfig(): void
 {
     // Mautic writes local.php (installer, settings UI) into config/, which is
@@ -297,6 +326,7 @@ $params = buildParameters();
 $envOut = childEnv($params);
 if (in_array($cmd, ['web', 'init', 'worker', 'console'], true)) {
     ensureVarDirs();
+    writeParametersLocal();
 }
 
 switch ($cmd) {
