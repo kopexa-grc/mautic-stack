@@ -26,9 +26,15 @@ before="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.admin-password}
 
 helm upgrade mautic "$CHART" -n "$NS" -f "$CHART/ci/default-values.yaml" \
   --set image.repository="$repo" --set image.tag="$tag" --set image.pullPolicy=Never \
+  --set mautic.oauth.enabled=true \
   --wait --timeout 15m
 helm test mautic -n "$NS" >/dev/null && pass "upgraded to this commit" || fail "after upgrade"
 after="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.admin-password}')"
 [[ "$before" == "$after" ]] && pass "generated secrets kept across upgrade" || fail "secrets changed"
 init_log="$(kubectl -n "$NS" logs deploy/mautic -c init)"
 grep -q 'database is empty' <<<"$init_log" && fail "upgrade re-installed Mautic" || pass "upgrade kept the database (migrations only)"
+
+oauth_key="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.oauth-private-key}')"
+helm upgrade mautic "$CHART" -n "$NS" --reuse-values --wait --timeout 15m >/dev/null
+[[ -n "$oauth_key" && "$oauth_key" == "$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.oauth-private-key}')" ]] \
+  && pass "OAuth signing key generated once and kept on upgrade" || fail "OAuth signing key changed"

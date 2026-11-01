@@ -155,6 +155,16 @@ Return an existing value of a key in a Secret (so generated passwords survive
 upgrades), or a new random one.
   include "mautic.secretValue" (dict "ctx" . "name" "<secret>" "key" "<key>" "length" 32)
 */}}
+{{/* Existing RSA key from the release Secret, or a new one (PEM, base64). */}}
+{{- define "mautic.secretRsaKey" -}}
+{{- $existing := lookup "v1" "Secret" .ctx.Release.Namespace .name -}}
+{{- if and $existing (hasKey $existing.data .key) -}}
+{{- index $existing.data .key -}}
+{{- else -}}
+{{- genPrivateKey "rsa" | b64enc -}}
+{{- end -}}
+{{- end }}
+
 {{- define "mautic.secretValue" -}}
 {{- $existing := lookup "v1" "Secret" .ctx.Release.Namespace .name -}}
 {{- if and $existing (hasKey $existing.data .key) -}}
@@ -358,6 +368,25 @@ affinity:
 - name: MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY
   valueFrom:
     {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- if .Values.mautic.oauth.enabled }}
+{{- $oauthSecret := default (include "mautic.secretName" .) .Values.mautic.oauth.existingSecret }}
+- name: MAUTIC_OAUTH_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $oauthSecret }}
+      key: oauth-private-key
+- name: MAUTIC_OAUTH_ENCRYPTION_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $oauthSecret }}
+      key: oauth-encryption-key
+- name: MAUTIC_OAUTH_REDIRECT_HOSTS
+  value: {{ join "," .Values.mautic.oauth.redirectHosts | quote }}
+{{- with .Values.mautic.oauth.resource }}
+- name: MAUTIC_OAUTH_RESOURCE
+  value: {{ . | quote }}
+{{- end }}
 {{- end }}
 {{- with .Values.mautic.configParameters }}
 - name: MAUTIC_CONFIG_PARAMETERS

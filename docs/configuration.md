@@ -24,6 +24,8 @@ secret).
 | `MAUTIC_TRUSTED_HOSTS` | `trusted_hosts` | comma/space separated regexes |
 | `MAUTIC_MAILER_DSN`, `MAUTIC_MAILER_FROM_EMAIL`, `MAUTIC_MAILER_FROM_NAME` | `mailer_*` | Symfony Mailer DSN |
 | `MAUTIC_MESSENGER_DSN_EMAIL`, `MAUTIC_MESSENGER_DSN_HIT`, `MAUTIC_MESSENGER_DSN_FAILED` | `messenger_dsn_*` | `doctrine://default` queues in the DB; `sync://` sends inline |
+| `MAUTIC_POSTAL_JWKS_URL`, `MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY` | `postal_*` | Postal bounce webhooks, see [postal.md](postal.md) |
+| `MAUTIC_OAUTH_PRIVATE_KEY`, `MAUTIC_OAUTH_ENCRYPTION_KEY`, `MAUTIC_OAUTH_REDIRECT_HOSTS`, `MAUTIC_OAUTH_RESOURCE` | `kopexa_oauth_*` | OAuth 2.1 for MCP clients, see [oauth.md](oauth.md) |
 | `MAUTIC_CONFIG_PARAMETERS` | any | JSON object, merged last (wins) |
 | `MAUTIC_ADMIN_USERNAME`, `MAUTIC_ADMIN_EMAIL`, `MAUTIC_ADMIN_PASSWORD`, `MAUTIC_ADMIN_FIRSTNAME`, `MAUTIC_ADMIN_LASTNAME` | — | used by `init` for the first installation only |
 | `MAUTIC_DB_WAIT_TIMEOUT` | — | seconds `init`/`worker` wait for the DB (default 300) |

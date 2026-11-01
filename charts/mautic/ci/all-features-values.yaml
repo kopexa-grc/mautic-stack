@@ -7,6 +7,9 @@ mautic:
     fromEmail: marketing@example.com
   configParameters:
     default_timezone: Europe/Berlin
+  oauth:
+    enabled: true
+    resource: https://mautic.example.com/mcp
 web:
   replicaCount: 2
   pdb: {enabled: true}

@@ -68,6 +68,10 @@ const PARAMETER_MAP = [
     // kopexa/mautic-postal-bundle: verify Postal webhook signatures.
     'MAUTIC_POSTAL_JWKS_URL'              => ['postal_jwks_url', 'string'],
     'MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY'    => ['postal_webhook_public_key', 'string'],
+    'MAUTIC_OAUTH_PRIVATE_KEY'            => ['kopexa_oauth_private_key', 'string'],
+    'MAUTIC_OAUTH_ENCRYPTION_KEY'         => ['kopexa_oauth_encryption_key', 'string'],
+    'MAUTIC_OAUTH_REDIRECT_HOSTS'         => ['kopexa_oauth_redirect_hosts', 'list'],
+    'MAUTIC_OAUTH_RESOURCE'               => ['kopexa_oauth_resource', 'string'],
 ];
 
 function logmsg(string $msg): void

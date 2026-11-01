@@ -172,6 +172,29 @@
             }
           }
         },
+        "oauth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "existingSecret": {
+              "type": "string"
+            },
+            "redirectHosts": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9.-]+$"
+              }
+            },
+            "resource": {
+              "type": "string",
+              "pattern": "^(https?://.+)?$"
+            }
+          }
+        },
         "messenger": {
           "type": "object",
           "additionalProperties": false,

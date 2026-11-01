@@ -91,6 +91,23 @@ mautic:
     #   publicKeyFrom: {secretKeyRef: {name: postal-webhook, key: public.pem}}
     publicKeyFrom: {}
 
+  # OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle) for MCP
+  # clients such as Claude and ChatGPT: authorization code + PKCE (S256),
+  # dynamic client registration, consent behind Mautic's login (password or
+  # SAML SSO). See docs/oauth.md.
+  oauth:
+    enabled: false
+    # -- Secret with `oauth-private-key` (RSA private key, PEM; signs access
+    # tokens) and `oauth-encryption-key` (encrypts codes and refresh tokens).
+    # Empty: the chart generates both once and keeps them across upgrades.
+    existingSecret: ""
+    # -- Hosts that dynamically registered clients may redirect to (https,
+    # subdomains included). "localhost"/"127.0.0.1" allow loopback redirects
+    # of desktop clients (RFC 8252).
+    redirectHosts: [claude.ai, claude.com, chatgpt.com, chat.openai.com, localhost, 127.0.0.1]
+    # -- Audience of issued tokens (RFC 8707). Empty: <siteUrl>/mcp.
+    resource: ""
+
   # Messenger transports. doctrine://default queues in the database and is
   # processed by the worker Deployment; sync:// sends inline (no worker).
   messenger:

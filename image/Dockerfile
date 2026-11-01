@@ -38,6 +38,7 @@ COPY extensions/ /build/extensions/
 RUN rm -rf /build/extensions/*/qa \
  && cd mautic \
  && composer config repositories.kopexa '{"type": "path", "url": "/build/extensions/*", "options": {"symlink": false}}' \
+ && composer config --no-plugins allow-plugins.php-http/discovery false \
  && { grep -vE '^\s*(#|$)' /build/plugins.txt; \
       for f in /build/extensions/*/composer.json; do \
         php -r '$c = json_decode(file_get_contents($argv[1]), true); echo $c["name"], ":", $c["version"], "\n";' "$f"; \

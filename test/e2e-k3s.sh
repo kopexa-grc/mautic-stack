@@ -77,6 +77,7 @@ helm install mautic "$CHART" -n "$NS" "${common[@]}" \
   --set "ingress.hosts[0].paths[0].path=/" --set "ingress.hosts[0].paths[0].pathType=Prefix" \
   --set "ingress.tls[0].hosts[0]=$HOST" \
   --set backup.enabled=true \
+  --set mautic.oauth.enabled=true \
   --set networkPolicy.enabled=true \
   --set networkPolicy.egress.enabled=true \
   --set-json 'networkPolicy.egress.to=[
@@ -103,6 +104,14 @@ loc="$(https -o /dev/null -w '%{redirect_url}' "https://$HOST/s/dashboard")"
 echo "  redirect: $loc"
 [[ "$loc" == "https://$HOST/"* ]] && pass "redirects stay on https (X-Forwarded-Proto trusted)" \
   || fail "redirect is not https://$HOST/… — trusted proxies not applied"
+
+step "OAuth 2.1 discovery through the ingress"
+meta="$(https "https://$HOST/.well-known/oauth-authorization-server")"
+jq -e --arg h "https://$HOST" '.issuer == $h and .token_endpoint == ($h + "/oauth2/token")
+  and .code_challenge_methods_supported == ["S256"]' <<<"$meta" >/dev/null \
+  && pass "authorization server metadata (issuer https://$HOST)" || { echo "$meta"; fail "OAuth metadata"; }
+kid1="$(https "https://$HOST/oauth2/jwks.json" | jq -r '.keys[0].kid')"
+[[ -n "$kid1" && "$kid1" != null ]] && pass "JWKS served (chart-generated signing key)" || fail "JWKS"
 
 step "Egress allow-list is enforced"
 blocked="$(kubectl -n "$NS" exec deploy/mautic-worker -- /usr/bin/php -r '

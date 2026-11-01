@@ -13,6 +13,8 @@ pass() { printf '  \033[32mok\033[0m   %s\n' "$*"; }
 fail() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; dump; exit 1; }
 dump() {
   echo "--- web logs";  docker logs "$run_id-web" 2>&1 | tail -40 || true
+  echo "--- mautic logs"
+  docker exec "$run_id-web" /usr/bin/php -r 'foreach (glob("/app/var/logs/*.php") as $f) { echo "$f\n", implode("", array_slice(file($f), -15)); }' 2>&1 | cut -c1-1500 || true
   echo "--- db logs";   docker logs "$run_id-db" 2>&1 | tail -10 || true
 }
 cleanup() {
@@ -50,6 +52,9 @@ env=(
 # Postal webhook signing key (the test plays the Postal server).
 postal_key="$(mktemp)"; openssl genrsa -out "$postal_key" 2048 2>/dev/null
 env+=(-e MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY="$(openssl rsa -in "$postal_key" -pubout 2>/dev/null)")
+# OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle).
+oauth_key="$(mktemp)"; openssl genrsa -out "$oauth_key" 2048 2>/dev/null
+env+=(-e MAUTIC_OAUTH_PRIVATE_KEY="$(cat "$oauth_key")" -e MAUTIC_OAUTH_ENCRYPTION_KEY="$(openssl rand -hex 32)")
 env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
 secret="$(mktemp)"; echo mautic >"$secret"; chmod 644 "$secret"
 env+=(-v "$secret:/run/secrets/db-password:ro")
@@ -92,13 +97,17 @@ body="$(curl -s "$base/media/images/evil.php")"
 [[ "$body" != *PWNED* ]] && pass "uploaded PHP does not execute" || fail "uploaded PHP executed"
 
 # Login with the auto-installed admin.
+login_as_admin() { # $1 = cookie jar; prints where login_check redirects to
+  local csrf
+  csrf="$(curl -s -c "$1" -b "$1" "$base/s/login" | sed -n 's/.*name="_csrf_token" value="\([^"]*\)".*/\1/p' | head -1)"
+  [[ -n "$csrf" ]] || fail "no CSRF token on login page"
+  curl -s -o /dev/null -c "$1" -b "$1" -w '%{redirect_url}' \
+    -H "Origin: $base" -H "Referer: $base/s/login" \
+    --data-urlencode _username=admin --data-urlencode '_password=Sm0ke-Test-Passw0rd!' \
+    --data-urlencode "_csrf_token=$csrf" "$base/s/login_check"
+}
 jar="$(mktemp)"
-csrf="$(curl -s -c "$jar" -b "$jar" "$base/s/login" | sed -n 's/.*name="_csrf_token" value="\([^"]*\)".*/\1/p' | head -1)"
-[[ -n "$csrf" ]] || fail "no CSRF token on login page"
-login_to="$(curl -s -o /dev/null -c "$jar" -b "$jar" -w '%{redirect_url}' \
-  -H "Origin: $base" -H "Referer: $base/s/login" \
-  --data-urlencode _username=admin --data-urlencode '_password=Sm0ke-Test-Passw0rd!' \
-  --data-urlencode "_csrf_token=$csrf" "$base/s/login_check")"
+login_to="$(login_as_admin "$jar")"
 echo "  login_check -> $login_to"
 final="$(curl -s -L -c "$jar" -b "$jar" -o /tmp/mautic-smoke-page.html -w '%{http_code} %{url_effective}' "$base/s/dashboard")"
 echo "  dashboard   -> $final"
@@ -135,6 +144,93 @@ dnc="$(api "$base/api/contacts/$cid" | jq -r '.contact.doNotContact[0].reason //
 delayed='{"event":"MessageDelayed","payload":{"message":{"direction":"outgoing","to":"bounce@example.com"},"status":"SoftFail"}}'
 [[ "$(postal "$delayed" "$postal_key")" == 200 ]] && jq -e '.handled == false' /tmp/postal-resp >/dev/null \
   && pass "soft failures are ignored" || fail "soft failure handling"
+
+echo "OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle)"
+b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }
+b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+meta="$(curl -s "$base/.well-known/oauth-authorization-server")"
+jq -e '.issuer == "http://localhost:8080" and .code_challenge_methods_supported == ["S256"]
+       and .token_endpoint_auth_methods_supported == ["none"]
+       and (.authorization_endpoint | endswith("/s/oauth2/authorize"))' <<<"$meta" >/dev/null \
+  && pass "RFC 8414 metadata (S256 only, public clients)" || { echo "$meta"; fail "authorization server metadata"; }
+jwks_n="$(curl -s "$base/oauth2/jwks.json" | jq -r '.keys[0].n')"
+key_n="$(openssl rsa -in "$oauth_key" -noout -modulus 2>/dev/null | cut -d= -f2 \
+  | python3 -c 'import sys, base64; print(base64.urlsafe_b64encode(bytes.fromhex(sys.stdin.read().strip())).decode().rstrip("="))')"
+[[ "$jwks_n" == "$key_n" ]] && pass "JWKS publishes the signing key" || fail "JWKS key mismatch"
+
+reg() { curl -s -o /tmp/oauth-resp -w '%{http_code}' -X POST "$base/oauth2/register" -H 'Content-Type: application/json' -d "$1"; }
+[[ "$(reg '{"client_name":"Evil","redirect_uris":["https://evil.example/cb"]}')" == 400 ]] \
+  && pass "registration with foreign redirect host rejected" || fail "foreign redirect host accepted"
+[[ "$(reg '{"client_name":"Plain","redirect_uris":["http://evil.example/cb"]}')" == 400 ]] \
+  && pass "registration with non-https redirect rejected" || fail "http redirect accepted"
+redirect="http://127.0.0.1:33418/callback"
+[[ "$(reg '{"client_name":"Smoke MCP client","redirect_uris":["'"$redirect"'"],"token_endpoint_auth_method":"client_secret_post"}')" == 201 ]] \
+  || { cat /tmp/oauth-resp; fail "dynamic client registration"; }
+client_id="$(jq -r .client_id /tmp/oauth-resp)"
+jq -e '.token_endpoint_auth_method == "none" and (has("client_secret") | not)' /tmp/oauth-resp >/dev/null \
+  && pass "dynamic client registration (public client)" || fail "registration response"
+
+verifier="$(openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n')"
+challenge="$(printf '%s' "$verifier" | openssl dgst -sha256 -binary | b64url)"
+resource="http://localhost:8080/mcp"
+authz() { # $1 = code_challenge_method, $2 = curl cookie jar (or empty)
+  curl -s -G -o /tmp/oauth-page -w '%{http_code} %{redirect_url}' ${2:+-b "$2" -c "$2"} "$base/s/oauth2/authorize" \
+    --data-urlencode response_type=code --data-urlencode "client_id=$client_id" \
+    --data-urlencode "redirect_uri=$redirect" --data-urlencode "code_challenge=$challenge" \
+    --data-urlencode "code_challenge_method=$1" --data-urlencode state=smoke-state \
+    --data-urlencode 'scope=mcp:read mcp:write' --data-urlencode "resource=$resource"
+}
+fresh_jar="$(mktemp)"
+[[ "$(authz S256 "$fresh_jar")" == *"/s/login"* ]] && pass "authorization requires Mautic login" || fail "authorize without login"
+[[ "$(login_as_admin "$fresh_jar")" == *"/s/oauth2/authorize?"*"client_id=$client_id"* ]] \
+  && pass "login returns to the authorization request" || fail "login does not return to consent"
+[[ "$(authz plain "$jar")" == "302 $redirect?"*"error=invalid_request"* ]] \
+  && pass "PKCE plain rejected (S256 required)" || fail "PKCE plain accepted"
+[[ "$(authz S256 "$jar")" == "200 " ]] && grep -q 'Smoke MCP client' /tmp/oauth-page \
+  && pass "consent page shown to the logged-in user" || fail "consent page"
+decide() { # $1 = approve|deny ; reads token + txn from the last consent page
+  local token txn
+  token="$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' /tmp/oauth-page)"
+  txn="$(sed -n 's/.*name="txn" value="\([^"]*\)".*/\1/p' /tmp/oauth-page)"
+  curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" -c "$jar" -X POST "$base/s/oauth2/authorize" \
+    --data-urlencode "_token=$token" --data-urlencode "txn=$txn" --data-urlencode "decision=$1"
+}
+location="$(decide approve)"
+[[ "$location" == "$redirect?"*"state=smoke-state"* ]] || fail "approve redirect: $location"
+code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
+[[ -n "$code" ]] && pass "approval redirects with an authorization code" || fail "no code in $location"
+
+token() { curl -s -o /tmp/oauth-resp -w '%{http_code}' -X POST "$base/oauth2/token" "$@"; }
+code_grant() { token --data-urlencode grant_type=authorization_code --data-urlencode "code=$code" \
+  --data-urlencode "client_id=$client_id" --data-urlencode "redirect_uri=$redirect" --data-urlencode "code_verifier=$1"; }
+[[ "$(code_grant wrong-verifier-wrong-verifier-wrong-verifier-123)" == 400 ]] \
+  && pass "token request with wrong PKCE verifier rejected" || fail "wrong verifier accepted"
+[[ "$(code_grant "$verifier")" == 200 ]] || { cat /tmp/oauth-resp; fail "code exchange"; }
+access="$(jq -r .access_token /tmp/oauth-resp)"; refresh="$(jq -r .refresh_token /tmp/oauth-resp)"
+pass "code exchanged for access + refresh token"
+[[ "$(code_grant "$verifier")" == 400 ]] && pass "authorization code is single-use" || fail "code reused"
+
+IFS=. read -r jwt_h jwt_p jwt_s <<<"$access"
+header="$(b64url_decode "$jwt_h")"; claims="$(b64url_decode "$jwt_p")"
+jq -e '.typ == "at+jwt" and .alg == "RS256" and (.kid | length > 0)' <<<"$header" >/dev/null \
+  && jq -e --arg c "$client_id" --arg r "$resource" '.iss == "http://localhost:8080" and .aud == $r
+       and .sub == "1" and .client_id == $c and .scope == "mcp:read mcp:write" and .exp > .iat' <<<"$claims" >/dev/null \
+  && pass "access token is an RFC 9068 JWT (iss, aud=resource, sub, scope)" || { echo "$header $claims"; fail "JWT claims"; }
+openssl rsa -in "$oauth_key" -pubout -out /tmp/oauth-pub.pem 2>/dev/null
+b64url_decode "$jwt_s" >/tmp/oauth-sig
+printf '%s.%s' "$jwt_h" "$jwt_p" | openssl dgst -sha256 -verify /tmp/oauth-pub.pem -signature /tmp/oauth-sig >/dev/null \
+  && pass "JWT signature verifies against the JWKS key" || fail "JWT signature"
+
+refresh_grant() { token --data-urlencode grant_type=refresh_token --data-urlencode "refresh_token=$1" --data-urlencode "client_id=$client_id"; }
+[[ "$(refresh_grant "$refresh")" == 200 ]] || { cat /tmp/oauth-resp; fail "refresh"; }
+refresh2="$(jq -r .refresh_token /tmp/oauth-resp)"
+pass "refresh token grant"
+[[ "$(refresh_grant "$refresh")" == 400 ]] && pass "refresh tokens rotate (old one rejected)" || fail "old refresh token accepted"
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/oauth2/revoke" --data-urlencode "token=$refresh2" --data-urlencode "client_id=$client_id")" == 200 ]] \
+  && [[ "$(refresh_grant "$refresh2")" == 400 ]] && pass "revoked refresh token rejected (RFC 7009)" || fail "revocation"
+
+authz S256 "$jar" >/dev/null
+[[ "$(decide deny)" == "$redirect?"*"error=access_denied"* ]] && pass "denied consent returns access_denied" || fail "deny"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \

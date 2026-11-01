@@ -56,6 +56,8 @@ OVERRIDES = {
     "worker.memoryLimit": {"type": "string", "pattern": "^[0-9]+[KMG]?$"},
     "mautic.trustedProxies": {"type": "array", "items": {"type": "string"}},
     "worker.transports": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "mautic.oauth.redirectHosts": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z0-9.-]+$"}},
+    "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},
     "worker.replicaCount": {"type": "integer", "minimum": 0},
 }
