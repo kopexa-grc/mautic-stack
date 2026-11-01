@@ -45,6 +45,14 @@ take effect only for parameters that are **not** set through the environment.
 | `/app/docroot/media/files` | uploaded assets | persistent |
 | `/app/docroot/media/images` | uploaded images | persistent |
 
+## SAML single sign-on
+
+`MAUTIC_SAML_IDP_METADATA` (IdP metadata XML), `MAUTIC_SAML_IDP_ENTITY_ID`,
+`MAUTIC_SAML_IDP_OWN_CERTIFICATE` / `_OWN_PRIVATE_KEY` (PEM, optional),
+`MAUTIC_SAML_IDP_{EMAIL,USERNAME,FIRSTNAME,LASTNAME}_ATTRIBUTE` and
+`MAUTIC_SAML_IDP_DEFAULT_ROLE`. All of them accept `*_FILE`. Plain XML/PEM
+is base64-encoded automatically, as Mautic expects. See [sso.md](sso.md).
+
 ## Custom plugins and themes
 
 The image is immutable (no Marketplace installs at runtime). Build your own

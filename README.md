@@ -13,7 +13,9 @@ Kubernetes.
   daily, signed (cosign), SBOM + SLSA provenance, multi-arch (amd64/arm64).
 - **Helm chart** `oci://ghcr.io/kopexa-grc/charts/mautic` — web, queue
   workers, cron jobs, optional MariaDB, Ingress *or* Gateway API, restic
-  backups, NetworkPolicies, Pod Security "restricted" by default.
+  backups, SAML single sign-on (Keycloak, Google Workspace, Entra ID, …),
+  ingress and egress NetworkPolicies, Pod Security "restricted", validated
+  values (`values.schema.json`).
 - **Automatic updates** — Renovate opens a PR for every Mautic release on
   Packagist; patch releases are merged automatically once the end-to-end
   tests pass.

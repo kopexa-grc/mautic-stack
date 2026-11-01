@@ -49,6 +49,18 @@ jobs:
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
             echo "::endgroup::"
           done
+      - name: values.schema.json is up to date
+        run: |
+          yq -o=json "$CHART/values.yaml" | python3 "$CHART/hack/gen-schema.py" > /tmp/schema.json
+          diff -u "$CHART/values.schema.json" /tmp/schema.json \
+            || { echo "::error::run: yq -o=json values.yaml | python3 hack/gen-schema.py > values.schema.json"; exit 1; }
+      - name: Mautic version consistent (Dockerfile, appVersion, Artifact Hub)
+        run: |
+          docker="$(sed -n 's/^ARG MAUTIC_VERSION=//p' image/Dockerfile | head -1)"
+          app="$(yq '.appVersion' "$CHART/Chart.yaml")"
+          ah="$(yq '.annotations."artifacthub.io/images"' "$CHART/Chart.yaml" | yq '.[] | select(.name=="mautic") | .image' | sed 's/.*://')"
+          echo "Dockerfile=$docker appVersion=$app artifacthub=$ah"
+          [[ "$docker" == "$app" && "$app" == "$ah" ]]
       - name: Required values fail loudly
         run: |
           if helm template test "$CHART" >/dev/null 2>&1; then
@@ -115,19 +127,35 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: ${{ env.HELM_VERSION }}
-      - name: Version already published?
-        id: check
+      # Every change to the chart is released: if the current version was
+      # already published and the chart changed since, bump the patch level
+      # and commit it (no manual version bumps, Renovate updates included).
+      - name: Determine version
+        id: version
         run: |
-          v="$(sed -n 's/^version: //p' "$CHART/Chart.yaml")"
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-          if git ls-remote --exit-code --tags origin "refs/tags/chart-$v" >/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          v="$(yq '.version' "$CHART/Chart.yaml")"
+          if git rev-parse -q --verify "refs/tags/chart-$v" >/dev/null; then
+            if git diff --quiet "chart-$v" HEAD -- "$CHART"; then
+              echo "Chart $v already released and unchanged."; echo "release=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            IFS=. read -r major minor patch <<<"$v"
+            v="$major.$minor.$((patch + 1))"
+            yq -i ".version = \"$v\"" "$CHART/Chart.yaml"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -qam "chore(chart): release $v [skip ci]"
+            git push origin HEAD:main
           fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "Releasing chart $v" >> "$GITHUB_STEP_SUMMARY"
       - name: Package and push to GHCR (OCI)
-        if: steps.check.outputs.exists != 'true'
+        if: steps.version.outputs.release == 'true'
         id: push
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -135,26 +163,26 @@ jobs:
           out="$(helm push /tmp/chart/mautic-*.tgz "oci://ghcr.io/${{ github.repository_owner }}/charts" 2>&1)"
           echo "$out"
           echo "digest=$(sed -n 's/^Digest: //p' <<<"$out")" >> "$GITHUB_OUTPUT"
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: steps.check.outputs.exists != 'true'
-      # cosign uses the Docker credential store, not Helm's.
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
-        if: steps.check.outputs.exists != 'true'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2.0.3
-        if: steps.check.outputs.exists != 'true'
+        if: steps.version.outputs.release == 'true'
       - name: Publish Artifact Hub metadata
-        if: steps.check.outputs.exists != 'true'
+        if: steps.version.outputs.release == 'true'
         run: |
           oras push "ghcr.io/${{ github.repository_owner }}/charts/mautic:artifacthub.io" \
             --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
             artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: steps.version.outputs.release == 'true'
+      # cosign uses the Docker credential store, not Helm's.
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        if: steps.version.outputs.release == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Sign chart and tag release
-        if: steps.check.outputs.exists != 'true'
+        if: steps.version.outputs.release == 'true'
         run: |
           cosign sign --yes "ghcr.io/${{ github.repository_owner }}/charts/mautic@${{ steps.push.outputs.digest }}"
-          git tag "chart-${{ steps.check.outputs.version }}"
-          git push origin "chart-${{ steps.check.outputs.version }}"
+          git tag "chart-${{ steps.version.outputs.version }}"
+          git push origin "chart-${{ steps.version.outputs.version }}"
