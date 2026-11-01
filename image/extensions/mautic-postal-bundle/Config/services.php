@@ -13,5 +13,5 @@ return function (ContainerConfigurator $configurator): void {
         ->public();
 
     $services->load('MauticPlugin\\KopexaPostalBundle\\', '../')
-        ->exclude('../{'.implode(',', array_merge(MauticCoreExtension::DEFAULT_EXCLUDES, ['Tests'])).'}');
+        ->exclude('../{'.implode(',', array_merge(MauticCoreExtension::DEFAULT_EXCLUDES, ['Tests', 'DependencyInjection'])).'}');
 };
