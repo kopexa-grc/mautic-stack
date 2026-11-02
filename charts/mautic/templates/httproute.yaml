@@ -10,8 +10,14 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  # Defaults the API server fills in are spelled out (here and in
+  # backendRefs), so GitOps tools (Argo CD, Flux) see no permanent diff.
   parentRefs:
-    {{- required "httpRoute.parentRefs is required (the Gateway to attach to)" .Values.httpRoute.parentRefs | toYaml | nindent 4 }}
+    {{- $refs := list }}
+    {{- range (required "httpRoute.parentRefs is required (the Gateway to attach to)" .Values.httpRoute.parentRefs) }}
+    {{- $refs = append $refs (merge (dict) . (dict "group" "gateway.networking.k8s.io" "kind" "Gateway")) }}
+    {{- end }}
+    {{- toYaml $refs | nindent 4 }}
   {{- with .Values.httpRoute.hostnames }}
   hostnames:
     {{- tpl (toYaml .) $ | nindent 4 }}
@@ -24,6 +30,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       backendRefs:
-        - name: {{ include "mautic.fullname" . }}
+        - group: ""
+          kind: Service
+          name: {{ include "mautic.fullname" . }}
           port: {{ .Values.service.port }}
+          weight: 1
 {{- end }}
