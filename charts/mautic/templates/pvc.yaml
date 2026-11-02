@@ -14,6 +14,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  volumeMode: Filesystem
   accessModes:
     {{- toYaml .Values.persistence.accessModes | nindent 4 }}
   {{- with .Values.persistence.storageClass }}

@@ -160,12 +160,19 @@ spec:
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Retain
     whenScaled: Retain
+  # apiVersion, kind and volumeMode are what the API server stores anyway;
+  # spelled out so GitOps tools (Argo CD, Flux) see no permanent diff.
+  # The live object already has them, so this is no change to the
+  # immutable volumeClaimTemplates.
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: data
         labels:
           {{- include "mautic.componentSelector" (dict "ctx" . "component" "mariadb") | nindent 10 }}
       spec:
+        volumeMode: Filesystem
         accessModes:
           {{- toYaml .Values.mariadb.persistence.accessModes | nindent 10 }}
         {{- with .Values.mariadb.persistence.storageClass }}
