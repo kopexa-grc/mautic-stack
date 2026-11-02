@@ -209,6 +209,7 @@ code_grant() { token --data-urlencode grant_type=authorization_code --data-urlen
 [[ "$(code_grant "$verifier")" == 200 ]] || { cat /tmp/oauth-resp; fail "code exchange"; }
 access="$(jq -r .access_token /tmp/oauth-resp)"; refresh="$(jq -r .refresh_token /tmp/oauth-resp)"
 pass "code exchanged for access + refresh token"
+printf "campaign=%s base=%s\ntoken=%s\nrun=%s\n" "" "$base" "$access" "$run_id" > "${SMOKE_INFO:-/dev/null}"
 [[ "$(code_grant "$verifier")" == 400 ]] && pass "authorization code is single-use" || fail "code reused"
 
 IFS=. read -r jwt_h jwt_p jwt_s <<<"$access"
@@ -376,6 +377,9 @@ own="$(call "$editor_token" create_email_draft '{"name":"Editor draft","subject"
 grep -q 'role does not allow' <<<"$(result "$nope")" && [[ "$(result "$own" | jq -r '.published')" == false ]] \
   && pass "tools respect the Mautic role of the user (no contacts, own email drafts)" || { echo "$nope $own" | head -c 800; fail "Mautic permissions not applied"; }
 
+# shellcheck source=test/mcp-scenarios.sh
+source "$(dirname "$0")/mcp-scenarios.sh"
+
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \
   >/dev/null 2>&1 && pass "console mautic:segments:update" || fail "console command"
@@ -403,4 +407,4 @@ grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && 
 
 v="$(docker run --rm "$IMG" version)"
 pass "mautic version $v"
-echo "campaign=$campid base=$base" > "${SMOKE_INFO:-/dev/null}"
+printf "campaign=%s base=%s\ntoken=%s\nrun=%s\n%s\n" "$campid" "$base" "$access" "$run_id" "${SCENARIO_INFO:-}" > "${SMOKE_INFO:-/dev/null}"

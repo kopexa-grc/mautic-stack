@@ -92,6 +92,65 @@ Steps are validated the way the builder validates them:
 - **All or nothing:** an invalid flow changes nothing. A valid one is
   saved in one transaction.
 
+### Realistic examples
+
+Both flows below were built only through the MCP tools, the way an
+assistant does it:
+
+1. `list_campaign_step_types` and `describe_campaign_step_type` to find the
+   steps and their settings.
+2. `create_email_draft` for the emails.
+3. `create_campaign_draft`.
+4. `set_campaign_steps`, first with `dryRun`.
+
+The screenshots are the unchanged Mautic campaign builder. Both scenarios
+run on every image build (`test/mcp-scenarios.sh`). Mautic also executes
+them there.
+
+**Trial onboarding (16 steps).**
+
+- Welcome email, then "opened?":
+  - **yes:** tag `trial-aktiv`, then after 2 days the ISO 27001 roadmap,
+    then "clicked?":
+    - yes: +20 points, then a points condition (score ≥ 30?):
+      - yes: move to the *Sales-ready* segment and notify sales
+      - no: case study after 1 day
+    - no: demo offer after 4 days
+  - **no** (within 3 days): reminder, then "opened?":
+    - yes: +5 points
+    - no (within 7 days): tag `trial-kalt` and remove from the campaign
+
+![Trial onboarding flow built via MCP](img/mcp-scenario-trial-onboarding.png)
+
+The test publishes the campaign (a person's step) and adds a trial user.
+Mautic sends the welcome email. The test then opens it through Mautic's
+real tracking pixel, and the contact takes the *yes* branch: tagged
+`trial-aktiv`, roadmap email scheduled in 2 days.
+
+**NIS2 webinar follow-up (13 steps, two entry points).**
+
+- A field condition routes German contacts to German emails and everyone
+  else to English ones.
+- On both branches, a click moves the contact to the *MQL* stage. Without
+  a click there is a checklist after 5 days.
+- In parallel, a visit to the pricing page gives +15 points and a tag, and
+  sales is notified.
+
+![NIS2 webinar follow-up built via MCP](img/mcp-scenario-webinar-nis2.png)
+
+The test adds a German and an Irish contact. Each receives only the email
+of their language.
+
+What these scenarios taught the tools, now handled for the assistant:
+
+- **Tag fields take tag names.** Missing tags are created, as the builder's
+  tag widget does while typing. `dryRun` lists them under `tags_to_create`.
+- **Defaults the builder posts are filled in:** empty multi-selects and
+  interval fields. Some Mautic step handlers rely on them, for example
+  *Add / remove contact from campaign*.
+- **Emails in `email.send.to.user` are checked too:** the user must be
+  allowed to see them, and they must be template emails.
+
 ### Editing campaigns, including running ones
 
 `get_campaign` returns the flow in exactly the format `set_campaign_steps`
@@ -186,6 +245,8 @@ disabled Mautic user loses access immediately, even with a valid token.
   - refused moves
   - removal only after dry run and confirmation, with the redirect stored in the database
   - the cron keeps running afterwards
+- the two realistic scenarios above (`test/mcp-scenarios.sh`), executed by
+  Mautic including a real email open
 - a restricted role that sees no contacts
 
 `test/e2e-k3s.sh` checks discovery and the 401 challenge through the HTTPS
