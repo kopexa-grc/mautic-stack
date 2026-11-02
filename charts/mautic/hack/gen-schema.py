@@ -14,7 +14,7 @@ import sys
 FREE_FORM = {
     "commonLabels", "commonAnnotations",
     "global.nodeSelector", "global.affinity", "global.podLabels", "global.podAnnotations",
-    "mautic.configParameters", "mautic.saml.idpMetadataFrom", "mautic.postal.publicKeyFrom",
+    "mautic.configParameters", "mautic.saml.idpMetadataFrom", "mautic.postal.publicKeyFrom", "mautic.ipLookup.authFrom",
     "web.strategy", "web.lifecycle", "web.podAnnotations", "web.podLabels", "web.nodeSelector", "web.affinity",
     "web.startupProbe", "web.readinessProbe", "web.livenessProbe",
     "worker.podAnnotations", "worker.podLabels", "worker.nodeSelector", "worker.affinity",
@@ -56,6 +56,7 @@ OVERRIDES = {
     "worker.memoryLimit": {"type": "string", "pattern": "^[0-9]+[KMG]?$"},
     "mautic.trustedProxies": {"type": "array", "items": {"type": "string"}},
     "worker.transports": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "mautic.cors.validDomains": {"type": "array", "items": {"type": "string", "pattern": "^https?://[^/]+$"}},
     "mautic.oauth.redirectHosts": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z0-9.-]+$"}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},

@@ -139,6 +139,34 @@
         "trustedHosts": {
           "type": "array"
         },
+        "cors": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "restrictDomains": {
+              "type": "boolean"
+            },
+            "validDomains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^https?://[^/]+$"
+              }
+            }
+          }
+        },
+        "ipLookup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string"
+            },
+            "authFrom": {
+              "type": "object"
+            }
+          }
+        },
         "mailer": {
           "type": "object",
           "additionalProperties": false,

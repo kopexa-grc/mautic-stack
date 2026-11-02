@@ -73,6 +73,10 @@ const PARAMETER_MAP = [
     'MAUTIC_OAUTH_REDIRECT_HOSTS'         => ['kopexa_oauth_redirect_hosts', 'list'],
     'MAUTIC_OAUTH_RESOURCE'               => ['kopexa_oauth_resource', 'string'],
     'MAUTIC_MCP_LIVE_CAMPAIGN_EDITS'      => ['kopexa_mcp_live_campaign_edits', 'bool'],
+    'MAUTIC_CORS_RESTRICT_DOMAINS'        => ['cors_restrict_domains', 'bool'],
+    'MAUTIC_CORS_VALID_DOMAINS'           => ['cors_valid_domains', 'list'],
+    'MAUTIC_IP_LOOKUP_SERVICE'            => ['ip_lookup_service', 'string'],
+    'MAUTIC_IP_LOOKUP_AUTH'               => ['ip_lookup_auth', 'string'],
 ];
 
 function logmsg(string $msg): void

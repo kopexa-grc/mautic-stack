@@ -81,6 +81,27 @@ mautic:
   # -- Allowed Host header patterns (regex). Empty = Mautic default.
   trustedHosts: []
 
+  # CORS for the tracking script, forms and the JS API on your websites
+  # (Mautic: Configuration → System Settings → CORS). Empty validDomains:
+  # managed in the Mautic UI. Set here, the values win over the UI.
+  cors:
+    # -- Only allow the origins in validDomains.
+    restrictDomains: true
+    # -- Allowed origins, e.g. [https://www.kopexa.com, https://kopexa.com]
+    validDomains: []
+
+  # Geolocation of contacts by IP (Mautic: Configuration → System Settings →
+  # Miscellaneous). The database is stored on the persistent volume and
+  # refreshed monthly by the iplookup-download cron job, which is enabled
+  # automatically when authFrom is set.
+  ipLookup:
+    # -- Lookup service; empty = Mautic's default (maxmind_download,
+    # MaxMind GeoLite2, free account).
+    service: ""
+    # -- Credentials from a Secret (valueFrom source). For MaxMind GeoLite2:
+    # "<account id>:<license key>", e.g. {secretKeyRef: {name: maxmind, key: auth}}.
+    authFrom: {}
+
   mailer:
     # -- Symfony Mailer DSN, e.g. smtp://user:pass@smtp.example.com:587
     # Prefer existingSecret, since a DSN usually contains credentials.

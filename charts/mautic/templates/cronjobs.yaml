@@ -2,6 +2,9 @@
 {{- $ctx := . }}
 {{- range $name, $job := .Values.cron.jobs }}
 {{- $j := mergeOverwrite (deepCopy $ctx.Values.cron.defaults) (dict "enabled" true) $job }}
+{{- if and (eq $name "iplookup-download") $ctx.Values.mautic.ipLookup.authFrom }}
+{{- $_ := set $j "enabled" true }}
+{{- end }}
 {{- if $j.enabled }}
 ---
 apiVersion: batch/v1

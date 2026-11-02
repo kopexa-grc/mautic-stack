@@ -26,6 +26,8 @@ secret).
 | `MAUTIC_MESSENGER_DSN_EMAIL`, `MAUTIC_MESSENGER_DSN_HIT`, `MAUTIC_MESSENGER_DSN_FAILED` | `messenger_dsn_*` | `doctrine://default` queues in the DB; `sync://` sends inline |
 | `MAUTIC_POSTAL_JWKS_URL`, `MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY` | `postal_*` | Postal bounce webhooks, see [postal.md](postal.md) |
 | `MAUTIC_OAUTH_PRIVATE_KEY`, `MAUTIC_OAUTH_ENCRYPTION_KEY`, `MAUTIC_OAUTH_REDIRECT_HOSTS`, `MAUTIC_OAUTH_RESOURCE` | `kopexa_oauth_*` | OAuth 2.1 for MCP clients, see [oauth.md](oauth.md) |
+| `MAUTIC_CORS_VALID_DOMAINS`, `MAUTIC_CORS_RESTRICT_DOMAINS` | `cors_valid_domains`, `cors_restrict_domains` | origins allowed to call Mautic from your websites (tracking, forms, JS API); comma/space separated |
+| `MAUTIC_IP_LOOKUP_SERVICE`, `MAUTIC_IP_LOOKUP_AUTH` | `ip_lookup_service`, `ip_lookup_auth` | GeoIP; for MaxMind GeoLite2 the auth is `<account id>:<license key>` |
 | `MAUTIC_MCP_LIVE_CAMPAIGN_EDITS` | `kopexa_mcp_live_campaign_edits` | `false` makes running campaigns read-only for MCP, see [mcp.md](mcp.md#what-mcp-changes-can-trigger) |
 | `MAUTIC_CONFIG_PARAMETERS` | any | JSON object, merged last (wins) |
 | `MAUTIC_ADMIN_USERNAME`, `MAUTIC_ADMIN_EMAIL`, `MAUTIC_ADMIN_PASSWORD`, `MAUTIC_ADMIN_FIRSTNAME`, `MAUTIC_ADMIN_LASTNAME` | — | used by `init` for the first installation only |
@@ -71,3 +73,33 @@ FROM ghcr.io/kopexa-grc/mautic:7
 COPY --from=build --chown=0:0 /app/vendor /app/vendor
 COPY --from=build --chown=0:0 /app/docroot/plugins /app/docroot/plugins
 ```
+
+## Settings in the UI vs. in the chart
+
+Settings saved in Mautic's *Configuration* are stored in `config/local.php`
+on the persistent volume and survive restarts. Settings that come from the
+environment (chart values, `MAUTIC_*` variables, `mautic.configParameters`)
+are applied on top and **win**. The UI still shows the field, but a change
+there has no effect. Use the chart for what should be versioned (GitOps):
+
+| Mautic setting | Chart value |
+|---|---|
+| Mautic's root URL | `mautic.siteUrl` |
+| CORS: valid domains, restrict | `mautic.cors.validDomains`, `mautic.cors.restrictDomains` |
+| IP lookup service, credentials | `mautic.ipLookup.service`, `mautic.ipLookup.authFrom` (Secret) |
+| Anything else | `mautic.configParameters` (parameter name → value) |
+
+### GeoIP
+
+Mautic keeps the GeoIP database next to its cache. The chart puts that
+directory (`/app/var/cache/ip_data`) on the persistent volume, so it
+survives restarts and all pods share it.
+
+1. Create a free MaxMind account, get the account ID and a license key.
+2. Store `<account id>:<license key>` in a Secret and set
+   `mautic.ipLookup.authFrom: {secretKeyRef: {name: maxmind, key: auth}}`.
+   This also enables the monthly `iplookup-download` cron job.
+3. Download once right away:
+   `kubectl create job --from=cronjob/mautic-iplookup-download geoip-now`.
+4. With `networkPolicy.egress.enabled`, allow `download.maxmind.com:443`.
+

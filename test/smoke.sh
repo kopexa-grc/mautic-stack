@@ -48,6 +48,7 @@ env=(
   -e MAUTIC_SITE_URL=http://localhost:8080
   -e MAUTIC_ADMIN_EMAIL=admin@example.com -e MAUTIC_ADMIN_PASSWORD='Sm0ke-Test-Passw0rd!'
   -e MAUTIC_TRUSTED_PROXIES=172.16.0.0/12
+  -e "MAUTIC_CORS_VALID_DOMAINS=https://www.kopexa.com https://kopexa.com"
   -e MAUTIC_MESSENGER_DSN_EMAIL=doctrine://default -e MAUTIC_MESSENGER_DSN_HIT=doctrine://default
 )
 # Postal webhook signing key (the test plays the Postal server).
@@ -85,6 +86,9 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$base$1"; }
 login="$(curl -s -L "$base/s/login")"
 grep -q 'name="_username"' <<<"$login" && pass "login page renders" || fail "login page"
 [[ "$(code /healthz)" == 200 ]] && pass "/healthz" || fail "/healthz"
+preflight() { curl -s -o /dev/null -D - -X OPTIONS -H "Origin: $1" -H 'Access-Control-Request-Headers: content-type' "$base/mtc/event" | tr -d '\r' | sed -n 's/^[Aa]ccess-[Cc]ontrol-[Aa]llow-[Oo]rigin: //p'; }
+[[ "$(preflight https://www.kopexa.com)" == https://www.kopexa.com && -z "$(preflight https://evil.example)" ]] \
+  && pass "CORS from MAUTIC_CORS_VALID_DOMAINS (allowed origin yes, others no)" || fail "CORS: allowed='$(preflight https://www.kopexa.com)' other='$(preflight https://evil.example)'"
 # Behind Cloudflare (or any public hop) X-Forwarded-For carries public IPs.
 # A replica with an https site URL, reached through a trusted proxy that says
 # https, must answer instead of redirecting to itself (301 loop).

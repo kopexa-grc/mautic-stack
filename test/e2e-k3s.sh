@@ -123,6 +123,13 @@ mcp_unauth="$(https -o /dev/null -D - -X POST "https://$HOST/mcp" -H 'Content-Ty
 grep -qi "^www-authenticate: Bearer.*resource_metadata=\"https://$HOST/" <<<"$mcp_unauth" \
   && pass "MCP endpoint asks for OAuth through the ingress" || { echo "$mcp_unauth"; fail "MCP endpoint"; }
 
+step "GeoIP database directory"
+geo="$(kubectl -n "$NS" exec deploy/mautic -c web -- /usr/bin/php -r '
+  $d = "/app/var/cache/ip_data"; file_put_contents("$d/.probe", "x");
+  echo is_writable($d) && file_exists("$d/.probe") ? "ok" : "no";' 2>/dev/null || true)"
+geo_worker="$(kubectl -n "$NS" exec deploy/mautic-worker -- /usr/bin/php -r 'echo file_exists("/app/var/cache/ip_data/.probe") ? "ok" : "no";' 2>/dev/null || true)"
+[[ "$geo/$geo_worker" == ok/ok ]] && pass "GeoIP directory persistent and shared between pods" || fail "GeoIP directory (web=$geo worker=$geo_worker)"
+
 step "Egress allow-list is enforced"
 blocked="$(kubectl -n "$NS" exec deploy/mautic-worker -- /usr/bin/php -r '
   $s = @fsockopen("1.1.1.1", 443, $errno, $errstr, 5); echo $s ? "open" : "blocked";' 2>/dev/null || true)"

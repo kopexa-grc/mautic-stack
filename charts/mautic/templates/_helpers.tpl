@@ -251,6 +251,11 @@ topologySpreadConstraints:
   mountPath: /tmp
 - name: var
   mountPath: /app/var
+# GeoIP database (Mautic keeps it next to the cache): persistent and shared,
+# so the monthly download reaches every pod and survives restarts.
+- name: data
+  mountPath: /app/var/cache/ip_data
+  subPath: ip_data
 {{- end }}
 
 {{/*
@@ -389,6 +394,21 @@ affinity:
 {{- end }}
 - name: MAUTIC_MCP_LIVE_CAMPAIGN_EDITS
   value: {{ .Values.mautic.mcp.liveCampaignEdits | toString | quote }}
+{{- end }}
+{{- with .Values.mautic.cors.validDomains }}
+- name: MAUTIC_CORS_VALID_DOMAINS
+  value: {{ join "," . | quote }}
+- name: MAUTIC_CORS_RESTRICT_DOMAINS
+  value: {{ $.Values.mautic.cors.restrictDomains | toString | quote }}
+{{- end }}
+{{- with .Values.mautic.ipLookup.service }}
+- name: MAUTIC_IP_LOOKUP_SERVICE
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.mautic.ipLookup.authFrom }}
+- name: MAUTIC_IP_LOOKUP_AUTH
+  valueFrom:
+    {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.mautic.configParameters }}
 - name: MAUTIC_CONFIG_PARAMETERS
