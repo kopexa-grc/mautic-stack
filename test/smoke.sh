@@ -342,6 +342,8 @@ jq -e '(.changes.added | length) == 0 and (.changes.changed | length) == 0 and (
 upd="$(result "$(call "$access" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\",\"wait\":{\"interval\":5,\"unit\":\"d\"}}")")"
 jq -e --arg k "$reminder_id" '(.changes.changed == [{"key": $k, "name": .changes.changed[0].name, "fields": ["wait"]}]) and ([.steps[] | select(.key == $k) | .wait] == [{"interval": 5, "unit": "d"}]) and .published == true' <<<"$upd" >/dev/null \
   && pass "update_campaign_step on a running campaign: wait 3 -> 5 days, same step ID" || { echo "$upd" | head -c 1500; fail "update_campaign_step"; }
+jq -e --arg k "$reminder_id" '.live_effects.contacts_in_campaign >= 1 and .live_effects.outbound_steps == [{"key": $k, "type": "email.send", "name": .live_effects.outbound_steps[0].name, "change": "changed"}] and (.live_effects.warning | test("Confirm with the user"))' <<<"$upd" >/dev/null \
+  && pass "running campaign: result warns that the changed email step is live (live_effects)" || { jq -c .live_effects <<<"$upd"; fail "live_effects missing"; }
 added="$(result "$(call "$access" add_campaign_step "{\"campaignId\":$campid,\"step\":{\"key\":\"bonus\",\"type\":\"lead.changepoints\",\"parent\":\"$reminder_id\",\"properties\":{\"points\":5}}}")")"
 bonus_id="$(jq -r '.steps[] | select(.parent == "'"$reminder_id"'") | .key' <<<"$added")"
 jq -e '(.changes.added | length == 1) and (.steps | length == 5)' <<<"$added" >/dev/null && [[ "$bonus_id" =~ ^[0-9]+$ ]] \

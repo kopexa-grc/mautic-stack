@@ -19,8 +19,10 @@ Kubernetes.
 - **AI assistants via MCP** — built-in [MCP server](docs/mcp.md) at
   `/mcp` for Claude, ChatGPT and other clients, with standard OAuth 2.1
   login (PKCE, dynamic client registration) against Mautic itself. The
-  assistant can read contacts, segments, emails, campaigns and statistics,
-  and writes drafts only, with the user's Mautic permissions.
+  assistant reads contacts, segments, emails, campaigns and statistics,
+  creates emails and campaigns unpublished and edits campaign flows,
+  including running campaigns (live, see the docs). It works with the
+  user's Mautic permissions and never publishes or sends directly.
 - **Built-in extensions** — Postal bounce handling, Kopexa email theme with
   a deliverability gate, double opt-in, Symfony mailer bridges
   ([docs/plugins.md](docs/plugins.md)).

@@ -9,6 +9,14 @@ Streamable HTTP. Clients sign in with OAuth 2.1 against Mautic itself
 client and from then on the assistant works **with that person's Mautic
 permissions**.
 
+> **What an assistant can set in motion.** MCP never publishes,
+> unpublishes or sends anything itself. Emails and new campaigns are
+> created unpublished. **Editing a running (published) campaign is
+> different: it is live.** Mautic's regular scheduler executes changed and
+> added steps for the contacts in the campaign. That can send emails, for
+> example a newly added reminder or a step switched to another email. See
+> [What MCP changes can trigger](#what-mcp-changes-can-trigger).
+
 ## Enable
 
 ```yaml
@@ -47,14 +55,14 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `get_email_stats` | `mcp:read` | Sent, read, read rate, clicks per link, pending recipients |
 | `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their flow (in the `set_campaign_steps` format, with contacts per step) |
 | `create_email_draft` | `mcp:write` | New **unpublished** email (HTML, subject, preheader, segments) |
-| `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email |
+| `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email (published or sent emails are refused) |
 | `list_campaign_step_types` | `mcp:read` | Available actions, decisions and conditions (including those of installed plugins) |
 | `describe_campaign_step_type` | `mcp:read` | Properties of a step type (names, required, choices), which steps it may follow |
 | `create_campaign_draft` | `mcp:write` | New **unpublished** campaign with segment source |
 | `update_campaign_draft` | `mcp:write` | Change name, description, segments of an unpublished campaign |
-| `set_campaign_steps` | `mcp:write` | Set the complete flow: actions, decisions, conditions, waits, yes/no branches (applied as a diff) |
-| `update_campaign_step` | `mcp:write` | Change one step (name, wait, properties), also in a running campaign |
-| `add_campaign_step` | `mcp:write` | Add one step, also to a running campaign |
+| `set_campaign_steps` | `mcp:write` | Set the complete flow: actions, decisions, conditions, waits, yes/no branches (applied as a diff). **Live in running campaigns.** |
+| `update_campaign_step` | `mcp:write` | Change one step (name, wait, properties). **Live in running campaigns.** |
+| `add_campaign_step` | `mcp:write` | Add one step. **Live in running campaigns.** |
 | `remove_campaign_step` | `mcp:write` | Remove one step; in a running campaign only after `dryRun` + `confirm`, optionally redirecting waiting contacts |
 
 ### Campaign flows
@@ -184,10 +192,38 @@ Publishing, unpublishing and sending stay with a person in Mautic. Every
 change is written to the audit log with what was added, changed and
 removed.
 
-**Nothing is sent or published through MCP.** Write tools only create and
-change drafts. Published or already sent items are refused. A person
-reviews the draft in Mautic (each result contains its `url`) and publishes
-it there.
+### What MCP changes can trigger
+
+| Action | Effect |
+|---|---|
+| Create or change an email | Saved **unpublished**. Published or already sent emails cannot be changed. A person reviews and publishes it in Mautic (each result contains its `url`). Nothing is sent. |
+| Create a campaign, edit a campaign that is not published | Draft only. No contact enters it and nothing runs until a person publishes it. |
+| **Edit a running (published) campaign** | **Live.** Mautic's scheduler (`mautic:campaigns:trigger`) executes added and changed steps for contacts reaching them. Email steps send to real recipients; webhook, push and similar steps reach external systems. Contacts already scheduled on a changed step keep their time but get the new content (for example, the email now set in the step). |
+| Publish, unpublish, send an email or campaign directly | Not possible via MCP. |
+
+Safeguards for running campaigns:
+
+- **Live effects in every result.** Each step tool returns `live_effects`
+  when it touches a running campaign, also in a `dryRun`. It lists the
+  outbound steps (email, message, webhook, push) that were added or changed
+  and how many contacts are in the campaign.
+- **Assistant instructions.** The server tells the assistant to dry-run
+  first, show `live_effects` and save only after the user confirms. This is
+  an instruction to the assistant, **not a technical lock**: a client can
+  save without a dry run.
+- **No moving steps; removing only with confirmation.** Steps cannot be
+  moved. They can only be removed with `confirm` / `allow_deletions`, after
+  a dry run shows the contacts waiting on them.
+- **Permissions apply.** The user's Mautic role must allow editing the
+  campaign (`campaign:campaigns:editown` / `editother`), and the token
+  needs `mcp:write`.
+- **Audit log.** Each change is recorded with the OAuth client id and
+  what was added, changed and removed.
+
+If assistants should not change running campaigns at all, there is no
+role setting for that yet. Mautic's edit permission covers published and
+unpublished campaigns alike. Use a read-only token (`mcp:read`) or a role
+without campaign edit rights.
 
 ## Permissions
 
@@ -199,12 +235,16 @@ Three layers, all of which must allow an action:
    own/other checks as the Mautic UI and API apply (`lead:leads:viewother`,
    `email:emails:create`, `email:emails:editown`, …). Users who may only see
    their own items only get those in lists.
-3. **Draft rule**: no publishing, no sending, no deleting.
+3. **Bundle rules**: no publishing, unpublishing or direct sending.
+   Emails can only be changed while unpublished and never sent. Running
+   campaigns can be edited, live, within the rules
+   [above](#what-mcp-changes-can-trigger).
 
 We recommend a dedicated role, for example *AI Editor*:
 
 - Emails: view, create, edit (own)
-- Campaigns: view, create, edit (own)
+- Campaigns: view, create, edit (own). Edit also covers the role's own
+  *running* campaigns, see above.
 - Segments: view
 - Contacts: view only if the assistant really needs contact data
 

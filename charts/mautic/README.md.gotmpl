@@ -24,7 +24,7 @@ documentation: [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-st
 - **Exposure**: Ingress *or* Gateway API `HTTPRoute`.
 - **Backups**: restic to S3, B2, Azure, GCS, SFTP or REST, with database dump and media.
 - **Single sign-on**: SAML with Keycloak, Google Workspace, Entra ID and others.
-- **AI assistants via MCP**: Claude, ChatGPT and other clients connect to `/mcp` with standard OAuth 2.1 (PKCE, dynamic client registration). They can read data and write **drafts only**, with the user's Mautic permissions.
+- **AI assistants via MCP**: Claude, ChatGPT and other clients connect to `/mcp` with standard OAuth 2.1 (PKCE, dynamic client registration). They can read data, create unpublished emails and campaigns, and edit campaign flows (changes to running campaigns are live), with the user's Mautic permissions. They never publish or send directly.
 - **Built-in extensions**:
   - Postal bounce webhooks
   - Kopexa email theme
