@@ -11,8 +11,9 @@ permissions**.
 
 > **What an assistant can set in motion.** MCP never publishes,
 > unpublishes or sends anything itself. Emails and new campaigns are
-> created unpublished. **Editing a running (published) campaign is
-> different: it is live.** Mautic's regular scheduler executes changed and
+> created unpublished. **Two things are live:** editing a running
+> (published) campaign, and adding contacts to segments that running
+> campaigns or published segment emails use. Mautic's regular scheduler executes changed and
 > added steps for the contacts in the campaign. That can send emails, for
 > example a newly added reminder or a step switched to another email. See
 > [What MCP changes can trigger](#what-mcp-changes-can-trigger).
@@ -48,7 +49,11 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 
 | Tool | Scope | What it does |
 |---|---|---|
-| `search_contacts` | `mcp:read` | Search by name, email, company or Mautic search syntax (`tag:…`, `segment:…`) |
+| `search_contacts` | `mcp:read` | Search by name, email, company or Mautic search syntax (`tag:…`, `segment:…`); `includeFields` returns all profile fields (exports) |
+| `list_contact_fields` | `mcp:read` | Contact fields: alias, label, type, choices, which ones identify contacts |
+| `upsert_contacts` | `mcp:contacts:write` | Create or update up to 100 contacts per call, matched by email (and other unique fields): fields, tags (`-tag` removes), optionally into segments; `overwrite: false` fills only empty fields; `dryRun` |
+| `create_segment` | `mcp:contacts:write` | New static segment (no filters) |
+| `add_contacts_to_segment`, `remove_contacts_from_segment` | `mcp:contacts:write` | Change membership of up to 100 contacts; `dryRun`. **Adding can be live** (see below) |
 | `get_contact` | `mcp:read` | Profile fields, tags, segments, points, stage, Do-Not-Contact status |
 | `list_segments` | `mcp:read` | Segments with contact counts |
 | `list_emails`, `get_email` | `mcp:read` | Emails with type, status, statistics, HTML |
@@ -199,6 +204,8 @@ removed.
 | Create or change an email | Saved **unpublished**. Published or already sent emails cannot be changed. A person reviews and publishes it in Mautic (each result contains its `url`). Nothing is sent. |
 | Create a campaign, edit a campaign that is not published | Draft only. No contact enters it and nothing runs until a person publishes it. |
 | **Edit a running (published) campaign** | Only with the scope `mcp:campaigns:live` and if the instance allows it (see below). Then **live.** Mautic's scheduler (`mautic:campaigns:trigger`) executes added and changed steps for contacts reaching them. Email steps send to real recipients; webhook, push and similar steps reach external systems. Contacts already scheduled on a changed step keep their time but get the new content (for example, the email now set in the step). |
+| Create or update contacts | Saved immediately. Mautic's own rules apply (unique email, field types). Do-Not-Contact (unsubscribed, bounced) is never changed, so an assistant cannot re-subscribe anyone. |
+| **Add contacts to a segment** (`upsert_contacts` with `segmentIds`, `add_contacts_to_segment`) | **Can be live.** Running campaigns with this segment as source take the new members in with their next run; published segment emails of the segment are sent to them with the next broadcast run. The result lists both under `live_effects` (`running_campaigns`, `published_segment_emails`), also in a `dryRun`. New static segments from `create_segment` are used by nothing yet. |
 | Publish, unpublish, send an email or campaign directly | Not possible via MCP. |
 
 Safeguards for running campaigns:
@@ -241,13 +248,34 @@ mautic:
     liveCampaignEdits: false   # running campaigns are read-only for MCP
 ```
 
+### Syncing contacts with a CRM (e.g. Twenty)
+
+With a CRM connector (such as Twenty's MCP server) and this one in the same
+assistant, contacts move both ways without an import file:
+
+- **CRM → Mautic:** *"Take all companies in Twenty with status Customer,
+  their people with email, and put them into a new Mautic segment
+  'Kunden 2026', tagged twenty."* The assistant calls `list_contact_fields`
+  to map the fields, `create_segment`, then `upsert_contacts` in batches of
+  100 with `dryRun` first (counts, rejected rows, `live_effects`) and saves
+  after you confirm.
+- **Mautic → CRM:** *"Export everyone in segment 'Webinar NIS2' who opened
+  the follow-up, with company and position, to Twenty."*
+  `search_contacts` with `segment:<alias>` and `includeFields: true`,
+  paginated with `limit` / `offset`.
+
+Existing contacts are found by email, so repeated syncs update instead of
+duplicating (`unchanged` when nothing differs). `overwrite: false` keeps
+values that are already set in Mautic.
+
 ## Permissions
 
 Three layers, all of which must allow an action:
 
 1. **Scopes** of the token, chosen by the user on the consent page:
    - `mcp:read`
-   - `mcp:write`
+   - `mcp:write` (email and campaign drafts, campaign flows)
+   - `mcp:contacts:write` (contacts and segments)
    - `mcp:campaigns:live` (opt-in, needed for changes to running campaigns)
 
    A write call with a read-only token is answered with

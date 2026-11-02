@@ -296,6 +296,11 @@ SCOPE=mcp:read authz S256 "$jar" >/dev/null
 location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
 [[ "$(code_grant "$verifier")" == 200 ]] || fail "read-only token"
 read_token="$(jq -r .access_token /tmp/oauth-resp)"
+# A token for the contact tools (scope mcp:contacts:write).
+SCOPE='mcp:read mcp:contacts:write' authz S256 "$jar" >/dev/null
+location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
+[[ "$(code_grant "$verifier")" == 200 ]] || fail "contacts token"
+contacts_token="$(jq -r .access_token /tmp/oauth-resp)"
 
 prm="$(curl -s "$base/.well-known/oauth-protected-resource/mcp")"
 jq -e --arg r "$resource" '.resource == $r and .authorization_servers == ["http://localhost:8080"]' <<<"$prm" >/dev/null \
@@ -319,8 +324,8 @@ jq -e '.result.serverInfo.name == "Mautic"' <<<"$init" >/dev/null && [[ -n "$MCP
   && pass "initialize (session stored in the database)" || { echo "$init"; cat /tmp/mcp-headers; fail "MCP initialize"; }
 mcp "$access" '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
 tools="$(mcp "$access" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')"
-[[ "$(jq '.result.tools | length' <<<"$tools")" == 18 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts")' <<<"$tools" >/dev/null \
-  && pass "tools/list: 18 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
+[[ "$(jq '.result.tools | length' <<<"$tools")" == 23 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts") and index("upsert_contacts")' <<<"$tools" >/dev/null \
+  && pass "tools/list: 23 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
 call() { mcp "$1" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$2"'","arguments":'"$3"'}}'; }
 result() { jq -r '.result.content[0].text // empty' <<<"$1"; }
 found="$(call "$access" search_contacts '{"search":"bounce@example.com"}')"
@@ -451,6 +456,8 @@ grep -q 'role does not allow' <<<"$(result "$nope")" && [[ "$(result "$own" | jq
 
 # shellcheck source=test/mcp-scenarios.sh
 source "$(dirname "$0")/mcp-scenarios.sh"
+# shellcheck source=test/mcp-contacts.sh
+source "$(dirname "$0")/mcp-contacts.sh"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \
