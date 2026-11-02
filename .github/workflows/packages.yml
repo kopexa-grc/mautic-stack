@@ -43,7 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [mautic-oauth-bundle, mautic-mcp-bundle, mautic-postal-bundle, mautic-theme-kopexa]
+        # The theme (mautic-theme-kopexa) is Kopexa's own design and stays internal.
+        package: [mautic-oauth-bundle, mautic-mcp-bundle, mautic-postal-bundle]
     concurrency:
       group: split-${{ matrix.package }}
       cancel-in-progress: false

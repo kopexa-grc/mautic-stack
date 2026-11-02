@@ -1,8 +1,8 @@
 # Publishing the extensions as Composer packages
 
-Our four extensions live in this repository under
+Our extensions live in this repository under
 [`image/extensions/`](../image/extensions) and are built into the image from
-there. They can also be published as standalone Composer packages for any
+there. Three of them are published as standalone Composer packages for any
 Mautic 7 installation:
 
 | Package | Type | Mirror repository |
@@ -10,7 +10,9 @@ Mautic 7 installation:
 | `kopexa/mautic-oauth-bundle` | `mautic-plugin` | `kopexa-grc/mautic-oauth-bundle` |
 | `kopexa/mautic-mcp-bundle` | `mautic-plugin` | `kopexa-grc/mautic-mcp-bundle` |
 | `kopexa/mautic-postal-bundle` | `mautic-plugin` | `kopexa-grc/mautic-postal-bundle` |
-| `kopexa/mautic-theme-kopexa` | `mautic-theme` | `kopexa-grc/mautic-theme-kopexa` |
+
+The theme `kopexa/mautic-theme-kopexa` is Kopexa's own email design. It
+stays in this repository and is only built into the image, not published.
 
 Development stays here. Each mirror repository is a read-only copy of its
 directory, with history, the way Symfony publishes its components.
@@ -39,14 +41,14 @@ directory, with history, the way Symfony publishes its components.
 Everything below needs accounts or organisation rights, so it is done by
 a person. Until then, the `split` job is skipped.
 
-1. **Create the four mirror repositories** in `kopexa-grc`. Names are as in
+1. **Create the three mirror repositories** in `kopexa-grc`. Names are as in
    the table above. Make them public and empty (no README).
    - In each one's settings, set the description to point to mautic-stack.
    - Disable issues, wiki and projects there, so that everything goes to
      mautic-stack.
 2. **Create a token for the split job.** Use a fine-grained personal
    access token or a GitHub App with **Contents: read and write** on these
-   four repositories only. Store it in mautic-stack as the Actions secret
+   three repositories only. Store it in mautic-stack as the Actions secret
    `PACKAGES_SPLIT_TOKEN`.
 3. **Enable the split:** set the Actions variable `PACKAGES_SPLIT` = `true`
    in mautic-stack. Then re-run the `packages` workflow, or push to `main`.
@@ -55,24 +57,12 @@ a person. Until then, the `split` job is skipped.
    GitHub, then *Submit* each mirror's URL (`https://github.com/kopexa-grc/<name>`).
    With the GitHub account connected, Packagist updates automatically on
    new tags. The *Settings → GitHub sync* page shows the hooks.
-5. **Mautic Marketplace** (optional, plugins and themes). The marketplace
-   lists Packagist packages of type `mautic-plugin` / `mautic-theme`.
+5. **Mautic Marketplace** (optional). The marketplace lists Packagist
+   packages of type `mautic-plugin`.
    While it is in beta, packages need to be added to its allowlist. Apply
    as described in Mautic's developer docs
    ([listing a plugin](https://devdocs.mautic.org/en/7.0/marketplace/listing.html),
    [allowlist note](https://devdocs.mautic.org/en/5.x/marketplace/listing.html)).
-
-## Before publishing the theme
-
-`kopexa/mautic-theme-kopexa` is Kopexa's own email design:
-
-- The **code** is Apache-2.0.
-- The **Kopexa name and logos are trademarks**. They are not licensed for
-  other people's emails; see the theme's `NOTICE`.
-- The **fonts** are SIL OFL 1.1.
-
-Publishing it is fine as a reference or starting point. If it is meant to
-be reused by others, consider a neutral variant without the logos.
 
 ## Visibility
 

@@ -6,22 +6,10 @@ kopexa Mautic image (`themes/kopexa`).
 
 ## Installation
 
-Mautic 7 (Composer-based installation):
-
-```bash
-composer require kopexa/mautic-theme-kopexa
-php bin/console cache:clear
-```
-
-Pick the theme *Kopexa* when creating an email in the builder.
-
-Already included in the hardened Mautic image
+Built into the Mautic image
 [`ghcr.io/kopexa-grc/mautic`](https://github.com/kopexa-grc/mautic-stack).
-
-> Development happens in
-> [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa);
-> the package repository is a read-only mirror. Issues and pull requests
-> go to mautic-stack.
+Pick the theme *Kopexa* when creating an email in the builder. The theme
+is Kopexa's own design and is not published as a separate package.
 
 ![Preview](thumbnail.png)
 
