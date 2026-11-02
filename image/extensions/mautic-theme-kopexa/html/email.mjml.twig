@@ -7,8 +7,15 @@
 
   The t-* classes are the tokens Mautic's GrapesJS builder applies to newly
   dropped blocks, so content built in the editor follows the brand too.
+
+  Builder rules (Mautic's GrapesJS builder parses this as HTML):
+  - the root must be exactly <mjml> (no attributes): the builder refuses
+    anything else with "No valid MJML provided";
+  - no self-closing tags (<mj-x />): HTML has none for custom elements, so
+    everything after them would be nested inside. Close every tag.
+  qa/check.mjs enforces both.
 #}
-<mjml lang="de">
+<mjml>
   <mj-head>
     <mj-title>{subject}</mj-title>
     <!-- Brand fonts inline (no external stylesheet: avoids spam-filter
@@ -25,24 +32,24 @@
       <meta name="supported-color-schemes" content="light only">
     </mj-raw>
     <mj-attributes>
-      <mj-all font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
-      <mj-text color="#10253D" font-size="16px" line-height="26px" padding="0 32px 16px 32px" />
-      <mj-button font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="16px" border-radius="8px" inner-padding="14px 24px" padding="8px 32px 24px 32px" align="left" />
-      <mj-image padding="0" />
+      <mj-all font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text color="#10253D" font-size="16px" line-height="26px" padding="0 32px 16px 32px"></mj-text>
+      <mj-button font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="16px" border-radius="8px" inner-padding="14px 24px" padding="8px 32px 24px 32px" align="left"></mj-button>
+      <mj-image padding="0"></mj-image>
 
       <!-- Builder tokens (GrapesJS) -->
-      <mj-class name="t-body" font-size="16px" line-height="26px" color="#10253D" />
-      <mj-class name="t-lead" font-size="19px" line-height="30px" color="#10253D" />
-      <mj-class name="t-h1" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="32px" line-height="40px" color="#070B14" />
-      <mj-class name="t-h2" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="26px" line-height="34px" color="#070B14" />
-      <mj-class name="t-h3" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="21px" line-height="28px" color="#070B14" />
-      <mj-class name="t-h4" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#070B14" />
-      <mj-class name="t-label" font-family="'Geist Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12px" line-height="16px" letter-spacing="0.08em" color="#006CB8" />
-      <mj-class name="t-btn" font-weight="600" border-radius="8px" inner-padding="14px 24px" />
-      <mj-class name="t-btn-primary" background-color="#006CB8" color="#FFFFFF" />
-      <mj-class name="t-btn-secondary" background-color="#FFFFFF" color="#006CB8" border="1px solid #006CB8" />
-      <mj-class name="t-section" padding="0" />
-      <mj-class name="t-surface-1" background-color="#FFFFFF" />
+      <mj-class name="t-body" font-size="16px" line-height="26px" color="#10253D"></mj-class>
+      <mj-class name="t-lead" font-size="19px" line-height="30px" color="#10253D"></mj-class>
+      <mj-class name="t-h1" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="32px" line-height="40px" color="#070B14"></mj-class>
+      <mj-class name="t-h2" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="26px" line-height="34px" color="#070B14"></mj-class>
+      <mj-class name="t-h3" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="21px" line-height="28px" color="#070B14"></mj-class>
+      <mj-class name="t-h4" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#070B14"></mj-class>
+      <mj-class name="t-label" font-family="'Geist Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12px" line-height="16px" letter-spacing="0.08em" color="#006CB8"></mj-class>
+      <mj-class name="t-btn" font-weight="600" border-radius="8px" inner-padding="14px 24px"></mj-class>
+      <mj-class name="t-btn-primary" background-color="#006CB8" color="#FFFFFF"></mj-class>
+      <mj-class name="t-btn-secondary" background-color="#FFFFFF" color="#006CB8" border="1px solid #006CB8"></mj-class>
+      <mj-class name="t-section" padding="0"></mj-class>
+      <mj-class name="t-surface-1" background-color="#FFFFFF"></mj-class>
     </mj-attributes>
     <mj-style>
       a { color: #006CB8; }
@@ -57,7 +64,7 @@
     <!-- Header: original logo (white) on Navy -->
     <mj-section padding="32px 32px 24px 32px">
       <mj-column>
-        <mj-image src="{{ getAssetUrl('themes/'~template~'/assets/logo-light.png', null, null, true) }}" alt="Kopexa" width="140px" height="36px" align="left" href="https://www.kopexa.com/de" />
+        <mj-image src="{{ getAssetUrl('themes/'~template~'/assets/logo-light.png', null, null, true) }}" alt="Kopexa" width="140px" height="36px" align="left" href="https://www.kopexa.com/de"></mj-image>
       </mj-column>
     </mj-section>
 

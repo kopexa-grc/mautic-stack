@@ -33,9 +33,19 @@ badLinks.length ? fail(`non-https links: ${badLinks.join(', ')}`) : ok(`${hrefs.
 shorteners.length ? fail(`URL shorteners hurt reputation: ${shorteners.join(', ')}`) : ok('no URL shorteners');
 
 // 4. Required parts of a marketing email.
+// Mautic's GrapesJS builder: it parses the template as HTML and checks for
+// the literal "<mjml>" before converting ("No valid MJML provided").
+const mjmlSource = source.replace(/\{#[\s\S]*?#\}/g, '');
+/<mjml>/.test(mjmlSource) ? ok('root tag is exactly <mjml> (Mautic builder)') : fail('root must be exactly <mjml> without attributes, or the Mautic builder rejects the template');
+const selfClosing = mjmlSource.match(/<mj-[a-z-]+[^<>]*\/>/g) || [];
+selfClosing.length === 0 ? ok('no self-closing mj-* tags (builder parses HTML)') : fail(`self-closing tags break the builder's HTML parsing: ${selfClosing.slice(0, 3).join(' ')}`);
 /\{unsubscribe_text\}|\{unsubscribe_url\}/.test(source) ? ok('unsubscribe token present') : fail('no {unsubscribe_text} / {unsubscribe_url} in template');
 /\{webview_text\}|\{webview_url\}/.test(source) ? ok('web view token present') : warn('no web view link');
-/<html[^>]*\blang="[a-z-]+"/i.test(html) ? ok('lang attribute set (screen readers)') : fail('missing <html lang>');
+// Mautic's builder only accepts a bare <mjml> root, so MJML writes lang="und".
+const lang = (html.match(/<html[^>]*\blang="([a-z-]+)"/i) || [])[1];
+!lang ? fail('missing <html lang>') : lang === 'und'
+  ? warn('<html lang="und">: the Mautic builder does not allow <mjml lang>; screen readers fall back to their default language')
+  : ok(`lang="${lang}" (screen readers)`);
 /<title>[^<]+<\/title>/i.test(html) ? ok('<title> set') : fail('missing <title>');
 /Impressum/.test(source) && /Datenschutz/.test(source) ? ok('imprint and privacy links in footer') : fail('footer needs Impressum and Datenschutz links');
 text.replace(/\s+/g, ' ').length > 100 ? ok(`plain-text part ${text.length} chars`) : fail('plain-text part too short');
