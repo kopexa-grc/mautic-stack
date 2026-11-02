@@ -60,23 +60,9 @@
         "/^image/plugins\\.txt$/"
       ],
       "matchStrings": [
-        "(?m)^(?<depName>(?!kopexa/)[a-z0-9_.-]+/[a-z0-9_.-]+):(?<currentValue>v?[0-9][0-9.]*)$"
+        "(?m)^(?<depName>[a-z0-9_.-]+/[a-z0-9_.-]+):(?<currentValue>v?[0-9][0-9.]*)$"
       ],
       "datasourceTemplate": "packagist"
-    },
-    {
-      "customType": "regex",
-      "description": "Our bundles in image/plugins.txt: GitHub releases of kopexa-grc/mautic-*-bundle (until they are on Packagist)",
-      "managerFilePatterns": [
-        "/^image/plugins\\.txt$/"
-      ],
-      "matchStrings": [
-        "(?m)^kopexa/(?<pkg>mautic-[a-z]+-bundle):(?<currentValue>[0-9][0-9.]*)$"
-      ],
-      "depNameTemplate": "kopexa-grc/{{{pkg}}}",
-      "packageNameTemplate": "kopexa-grc/{{{pkg}}}",
-      "datasourceTemplate": "github-tags",
-      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
   "packageRules": [
@@ -130,9 +116,9 @@
     {
       "description": "Our own bundles: grouped, tested end-to-end by the smoke test, automerged when green",
       "matchDepNames": [
-        "kopexa-grc/mautic-oauth-bundle",
-        "kopexa-grc/mautic-mcp-bundle",
-        "kopexa-grc/mautic-postal-bundle"
+        "kopexa/mautic-oauth-bundle",
+        "kopexa/mautic-mcp-bundle",
+        "kopexa/mautic-postal-bundle"
       ],
       "groupName": "kopexa bundles",
       "automerge": true

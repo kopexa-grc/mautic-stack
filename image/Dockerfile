@@ -31,7 +31,7 @@ RUN composer create-project --no-progress --no-dev \
 
 # Built-in extensions:
 # - image/plugins.txt: third-party packages and our own bundles
-#   (kopexa-grc/mautic-*-bundle, from GitHub until they are on Packagist);
+#   (kopexa-grc/mautic-*-bundle), all from Packagist;
 # - image/extensions/*: packages kept in this repository (the theme), from a
 #   local path repository; versions from their VERSION files. A checkout of
 #   one of our bundles placed there (see docs/extensions.md) replaces the
@@ -44,9 +44,6 @@ RUN rm -rf /build/extensions/*/qa \
  && cd mautic \
  && php -r '$v = []; foreach (glob("/build/extensions/*/composer.json") as $f) { $v[json_decode(file_get_contents($f), true)["name"]] = trim(file_get_contents(dirname($f)."/VERSION")); } file_put_contents("/build/extension-versions.json", json_encode($v ?: new stdClass));' \
  && composer config repositories.kopexa "{\"type\": \"path\", \"url\": \"/build/extensions/*\", \"options\": {\"symlink\": false, \"versions\": $(cat /build/extension-versions.json)}}" \
- && for b in oauth mcp postal; do \
-      composer config "repositories.kopexa-$b" "{\"type\": \"vcs\", \"url\": \"https://github.com/kopexa-grc/mautic-$b-bundle\", \"no-api\": true}"; \
-    done \
  && composer config --no-plugins allow-plugins.php-http/discovery false \
  && php -r '$local = json_decode(file_get_contents("/build/extension-versions.json"), true); \
       foreach (file("/build/plugins.txt", FILE_IGNORE_NEW_LINES) as $l) { $l = trim($l); if ($l === "" || $l[0] === "#") continue; if (!isset($local[explode(":", $l)[0]])) echo "$l\n"; } \

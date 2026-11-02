@@ -16,8 +16,8 @@ symfony/mailgun-mailer:7.4.*
 symfony/sendgrid-mailer:7.4.*
 symfony/mailjet-mailer:7.4.*
 
-# Our own bundles, developed in their own repositories (installed from
-# GitHub until they are on Packagist; see docs/extensions.md).
+# Our own bundles, developed in their own repositories and published on
+# Packagist (see docs/extensions.md).
 kopexa/mautic-oauth-bundle:0.2.0
 kopexa/mautic-mcp-bundle:0.4.0
 kopexa/mautic-postal-bundle:0.1.0

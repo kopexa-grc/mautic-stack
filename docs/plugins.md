@@ -54,4 +54,5 @@ picking one; the planned approach is a Mautic plugin built on the official
 PHP MCP SDK (`mcp/sdk`) and `symfony/mcp-bundle`.
 
 Our own bundles (*ours* above) are developed in their own repositories and
-pinned in `image/plugins.txt`; see [docs/extensions.md](extensions.md).
+published on Packagist and pinned in `image/plugins.txt`; see
+[docs/extensions.md](extensions.md).
