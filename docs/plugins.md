@@ -13,9 +13,9 @@ months, and a clear need for our use cases.
 | Extension | What for | Configure in Mautic |
 |---|---|---|
 | [leuchtfeuer/mautic-doi-bundle](https://packagist.org/packages/leuchtfeuer/mautic-doi-bundle) | Double opt-in for forms and segments (GDPR, German UWG) | *Settings → Plugins → Double Opt-In* |
-| [kopexa/mautic-postal-bundle](../image/extensions/mautic-postal-bundle) (ours) | **Postal bounces:** signed `MessageBounced` / hard `MessageDeliveryFailed` webhooks mark the contact *Do Not Contact – bounced* | `mautic.postal.jwksUrl`; in Postal add a webhook to `https://<mautic>/mailer/callback` — see [docs/postal.md](postal.md) |
-| [kopexa/mautic-mcp-bundle](../image/extensions/mautic-mcp-bundle) (ours) | **MCP server** for Claude, ChatGPT and other AI assistants: read contacts, segments, emails, campaigns, statistics; create unpublished emails and campaigns, edit campaign flows (live for running campaigns), with the user's Mautic permissions; never publishes or sends directly | `mautic.oauth.enabled: true`, then add `https://<mautic>/mcp` as a connector — see [docs/mcp.md](mcp.md) |
-| [kopexa/mautic-oauth-bundle](../image/extensions/mautic-oauth-bundle) (ours) | **OAuth 2.1 authorization server** for MCP clients (Claude, ChatGPT): authorization code + PKCE S256, dynamic client registration, JWT access tokens, consent behind Mautic's login | `mautic.oauth.enabled: true` — see [docs/oauth.md](oauth.md) |
+| [kopexa/mautic-postal-bundle](https://github.com/kopexa-grc/mautic-postal-bundle) (ours) | **Postal bounces:** signed `MessageBounced` / hard `MessageDeliveryFailed` webhooks mark the contact *Do Not Contact – bounced* | `mautic.postal.jwksUrl`; in Postal add a webhook to `https://<mautic>/mailer/callback` — see [docs/postal.md](postal.md) |
+| [kopexa/mautic-mcp-bundle](https://github.com/kopexa-grc/mautic-mcp-bundle) (ours) | **MCP server** for Claude, ChatGPT and other AI assistants: read contacts, segments, emails, campaigns, statistics; create unpublished emails and campaigns, edit campaign flows (live for running campaigns), with the user's Mautic permissions; never publishes or sends directly | `mautic.oauth.enabled: true`, then add `https://<mautic>/mcp` as a connector — see [docs/mcp.md](mcp.md) |
+| [kopexa/mautic-oauth-bundle](https://github.com/kopexa-grc/mautic-oauth-bundle) (ours) | **OAuth 2.1 authorization server** for MCP clients (Claude, ChatGPT): authorization code + PKCE S256, dynamic client registration, JWT access tokens, consent behind Mautic's login | `mautic.oauth.enabled: true` — see [docs/oauth.md](oauth.md) |
 | [kopexa/mautic-theme-kopexa](../image/extensions/mautic-theme-kopexa) (ours) | **Kopexa email theme** (MJML, GrapesJS builder) from brand.kopexa.com tokens, with an automated quality gate (size, links, contrast, client compatibility, spam score) | pick theme *Kopexa* when creating an email |
 | `symfony/{amazon,postmark,brevo,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider HTTP APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `ses+api://KEY:SECRET@default?region=eu-central-1`, `postmark+api://TOKEN@default` |
 
@@ -53,6 +53,5 @@ been updated since. See [#2](https://github.com/kopexa-grc/mautic-stack/issues/2
 picking one; the planned approach is a Mautic plugin built on the official
 PHP MCP SDK (`mcp/sdk`) and `symfony/mcp-bundle`.
 
-Our own extensions (*ours* above) can also be installed in any Mautic 7
-installation via Composer once published; see
-[docs/publishing.md](publishing.md).
+Our own bundles (*ours* above) are developed in their own repositories and
+pinned in `image/plugins.txt`; see [docs/extensions.md](extensions.md).

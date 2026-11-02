@@ -4,7 +4,7 @@ Claude, ChatGPT and other MCP clients connect to remote MCP servers with
 OAuth 2.1, as the [MCP authorization spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
 requires. Mautic's built-in OAuth server (FOSOAuthServerBundle) predates
 OAuth 2.1: no PKCE, no dynamic client registration, no metadata discovery.
-[`kopexa/mautic-oauth-bundle`](../image/extensions/mautic-oauth-bundle) adds
+[`kopexa/mautic-oauth-bundle`](https://github.com/kopexa-grc/mautic-oauth-bundle) adds
 a separate authorization server on [league/oauth2-server](https://oauth2.thephpleague.com)
 that does. Mautic's own API OAuth (*Settings → API Credentials*) is not
 affected.

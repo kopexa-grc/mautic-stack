@@ -1,2 +1,5 @@
 .build/
 *.tgz
+
+# Local checkouts of our bundles, for testing unreleased changes (docs/extensions.md)
+/image/extensions/mautic-*-bundle/

@@ -3,7 +3,7 @@
 Mautic sends through our [Postal](https://docs.postalserver.io) server via
 SMTP. Postal reports bounces and delivery failures back to Mautic via
 webhooks, handled by
-[`kopexa/mautic-postal-bundle`](../image/extensions/mautic-postal-bundle).
+[`kopexa/mautic-postal-bundle`](https://github.com/kopexa-grc/mautic-postal-bundle).
 Without that, Mautic keeps mailing dead addresses and the sender reputation
 suffers.
 

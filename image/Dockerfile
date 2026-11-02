@@ -29,21 +29,28 @@ RUN composer create-project --no-progress --no-dev \
       --ignore-platform-req=ext-imap \
       "mautic/recommended-project:${MAUTIC_VERSION}" mautic
 
-# Built-in extensions: third-party packages (image/plugins.txt) and our own
-# bundles (image/extensions/*, installed from a local path repository). Our
-# packages carry their version in a VERSION file (published packages get it
-# from git tags, so composer.json has none); the path repository is told.
+# Built-in extensions:
+# - image/plugins.txt: third-party packages and our own bundles
+#   (kopexa-grc/mautic-*-bundle, from GitHub until they are on Packagist);
+# - image/extensions/*: packages kept in this repository (the theme), from a
+#   local path repository; versions from their VERSION files. A checkout of
+#   one of our bundles placed there (see docs/extensions.md) replaces the
+#   released version, for testing unreleased changes.
 COPY plugins.txt /build/plugins.txt
 COPY extensions/ /build/extensions/
 # QA tooling (qa/) stays in the repository: themes are served from the web
 # root, so nothing but the theme itself may be installed.
 RUN rm -rf /build/extensions/*/qa \
  && cd mautic \
- && php -r '$v = []; foreach (glob("/build/extensions/*/composer.json") as $f) { $v[json_decode(file_get_contents($f), true)["name"]] = trim(file_get_contents(dirname($f)."/VERSION")); } file_put_contents("/build/extension-versions.json", json_encode($v));' \
+ && php -r '$v = []; foreach (glob("/build/extensions/*/composer.json") as $f) { $v[json_decode(file_get_contents($f), true)["name"]] = trim(file_get_contents(dirname($f)."/VERSION")); } file_put_contents("/build/extension-versions.json", json_encode($v ?: new stdClass));' \
  && composer config repositories.kopexa "{\"type\": \"path\", \"url\": \"/build/extensions/*\", \"options\": {\"symlink\": false, \"versions\": $(cat /build/extension-versions.json)}}" \
+ && for b in oauth mcp postal; do \
+      composer config "repositories.kopexa-$b" "{\"type\": \"vcs\", \"url\": \"https://github.com/kopexa-grc/mautic-$b-bundle\", \"no-api\": true}"; \
+    done \
  && composer config --no-plugins allow-plugins.php-http/discovery false \
- && { grep -vE '^\s*(#|$)' /build/plugins.txt; \
-      php -r 'foreach (json_decode(file_get_contents("/build/extension-versions.json"), true) as $n => $v) echo "$n:$v\n";'; } \
+ && php -r '$local = json_decode(file_get_contents("/build/extension-versions.json"), true); \
+      foreach (file("/build/plugins.txt", FILE_IGNORE_NEW_LINES) as $l) { $l = trim($l); if ($l === "" || $l[0] === "#") continue; if (!isset($local[explode(":", $l)[0]])) echo "$l\n"; } \
+      foreach ($local as $n => $v) echo "$n:$v\n";' \
     | xargs composer require --no-progress --update-no-dev --ignore-platform-req=ext-imap
 
 WORKDIR /build/mautic

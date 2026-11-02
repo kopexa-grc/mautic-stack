@@ -127,7 +127,7 @@ See [docs/production.md](docs/production.md) (sizing, scaling, storage,
 upgrades), [docs/backup.md](docs/backup.md) (backup and restore),
 [docs/mcp.md](docs/mcp.md) (connect Claude, ChatGPT and other AI assistants via MCP),
 [docs/oauth.md](docs/oauth.md) (OAuth 2.1 authorization server),
-[docs/publishing.md](docs/publishing.md) (the extensions as Composer packages),
+[docs/extensions.md](docs/extensions.md) (our extensions: repositories and releases),
 [docs/postal.md](docs/postal.md) (sending via Postal, bounce webhooks on
 `/mailer/callback`) and [docs/sso.md](docs/sso.md) (SAML single sign-on).
 

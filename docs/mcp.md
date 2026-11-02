@@ -1,6 +1,6 @@
 # MCP: Mautic for Claude, ChatGPT and other AI assistants
 
-[`kopexa/mautic-mcp-bundle`](../image/extensions/mautic-mcp-bundle) runs a
+[`kopexa/mautic-mcp-bundle`](https://github.com/kopexa-grc/mautic-mcp-bundle) runs a
 [Model Context Protocol](https://modelcontextprotocol.io) server inside
 Mautic at `https://<mautic>/mcp`. It is built on the official
 [MCP PHP SDK](https://github.com/modelcontextprotocol/php-sdk) and uses
