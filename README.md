@@ -27,8 +27,9 @@ Kubernetes.
   a deliverability gate, double opt-in, Symfony mailer bridges
   ([docs/plugins.md](docs/plugins.md)).
 - **Automatic updates** — Renovate opens a PR for every Mautic release on
-  Packagist; patch releases are merged automatically once the end-to-end
-  tests pass.
+  Packagist as soon as it is out; patch releases are merged automatically
+  once the end-to-end tests pass. Security fixes are picked up immediately,
+  everything else (extensions, CI tooling) once a week.
 
 ## Quick start (Kubernetes)
 

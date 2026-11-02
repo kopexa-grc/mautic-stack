@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
-    ":semanticCommits"
+    ":semanticCommits",
+    "schedule:weekly"
   ],
   "labels": [
     "dependencies"
@@ -74,7 +75,10 @@
       "matchUpdateTypes": [
         "patch"
       ],
-      "automerge": true
+      "automerge": true,
+      "schedule": [
+        "at any time"
+      ]
     },
     {
       "description": "Mautic minor/major releases need a human look (migrations, breaking changes)",
@@ -89,6 +93,9 @@
       "labels": [
         "dependencies",
         "mautic-release"
+      ],
+      "schedule": [
+        "at any time"
       ]
     },
     {
@@ -114,14 +121,28 @@
       "automerge": true
     },
     {
-      "description": "Our own bundles: grouped, tested end-to-end by the smoke test, automerged when green",
+      "description": "Our own bundles: grouped, tested end-to-end by the smoke test, automerged when green; picked up as soon as they are released (they release at most monthly)",
       "matchDepNames": [
         "kopexa/mautic-oauth-bundle",
         "kopexa/mautic-mcp-bundle",
         "kopexa/mautic-postal-bundle"
       ],
       "groupName": "kopexa bundles",
-      "automerge": true
+      "automerge": true,
+      "schedule": [
+        "at any time"
+      ]
     }
-  ]
+  ],
+  "timezone": "Europe/Berlin",
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": [
+      "at any time"
+    ],
+    "labels": [
+      "dependencies",
+      "security"
+    ]
+  }
 }
