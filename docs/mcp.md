@@ -50,16 +50,27 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | Tool | Scope | What it does |
 |---|---|---|
 | `search_contacts` | `mcp:read` | Search by name, email, company or Mautic search syntax (`tag:…`, `segment:…`); `includeFields` returns all profile fields (exports) |
-| `list_contact_fields` | `mcp:read` | Contact fields: alias, label, type, choices, which ones identify contacts |
-| `upsert_contacts` | `mcp:contacts:write` | Create or update up to 100 contacts per call, matched by email (and other unique fields): fields, tags (`-tag` removes), optionally into segments; `overwrite: false` fills only empty fields; `dryRun` |
-| `create_segment` | `mcp:contacts:write` | New static segment (no filters) |
+| `list_contact_fields` | `mcp:read` | Fields of contacts or companies: alias, label, type, choices, which ones identify records |
+| `create_contact_field` | `mcp:contacts:write` | New custom field for contacts or companies (text, number, boolean, select, multiselect, date, email, url, …), e.g. for CRM IDs; idempotent. Needs the Mautic permission to manage fields |
+| `upsert_companies` | `mcp:contacts:write` | Create or update up to 100 companies, matched by company name (and other unique company fields), optionally linking contacts; `dryRun` |
+| `add_contacts_to_company`, `remove_contacts_from_company` | `mcp:contacts:write` | Link or unlink contacts (the company becomes their primary company) |
+| `upsert_contacts` | `mcp:contacts:write` | Create or update up to 100 contacts per call, matched by email (and other unique fields): fields, tags (`-tag` removes), points, stage, optionally into segments; `overwrite: false` fills only empty fields; `dryRun` |
+| `list_segment_filter_fields` | `mcp:read` | Everything segment filters can use: contact and company fields, tags, segment membership and behaviour (email opens and clicks, page visits, downloads, …) with operators and choices |
+| `create_segment` | `mcp:contacts:write` | New segment: static (no filters) or **dynamic** with filters, e.g. *deal_stage = Qualified and tags in [twenty]*; `dryRun` validates with Mautic's segment form and counts the matching contacts |
+| `update_segment` | `mcp:contacts:write` | Rename or replace the filters; `dryRun` shows matching vs. current contacts and `live_effects` |
 | `add_contacts_to_segment`, `remove_contacts_from_segment` | `mcp:contacts:write` | Change membership of up to 100 contacts; `dryRun`. **Adding can be live** (see below) |
 | `get_contact` | `mcp:read` | Profile fields, tags, segments, points, stage, Do-Not-Contact status |
+| `get_contact_activity` | `mcp:read` | History of a contact: email sends, opens, clicks, page visits, form submissions, points and stage changes, segment and campaign membership; filter by type, paginated |
+| `search_companies`, `get_company` | `mcp:read` | Companies with all fields and their contacts |
 | `list_segments` | `mcp:read` | Segments with contact counts |
 | `list_emails`, `get_email` | `mcp:read` | Emails with type, status, statistics, HTML |
 | `get_email_stats` | `mcp:read` | Sent, read, read rate, clicks per link, pending recipients |
 | `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their flow (in the `set_campaign_steps` format, with contacts per step) |
-| `create_email_draft` | `mcp:write` | New **unpublished** email (HTML, subject, preheader, segments) |
+| `list_email_layouts` | `mcp:read` | Brand layouts of the installed themes (Kopexa): panels `hero`, `article`, `cards`, their elements (label, title, text, button, image, …) and placeholder images |
+| `create_email_from_layout` | `mcp:write` | New **unpublished** email in the brand theme from panels and elements: stored as MJML (**editable in Mautic's builder**) and as HTML for sending; header and footer added automatically; inline HTML sanitized, links https only |
+| `update_email_layout` | `mcp:write` | Replace the content (and subject) of an unpublished, never-sent email |
+| `send_test_email` | `mcp:write` | Send a test of an email **to the signed-in user only** (sample or real contact for tokens), like *Send example* in Mautic |
+| `create_email_draft` | `mcp:write` | New **unpublished** email from raw HTML (code mode; prefer `create_email_from_layout`) |
 | `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email (published or sent emails are refused) |
 | `list_campaign_step_types` | `mcp:read` | Available actions, decisions and conditions (including those of installed plugins) |
 | `describe_campaign_step_type` | `mcp:read` | Properties of a step type (names, required, choices), which steps it may follow |
@@ -256,9 +267,14 @@ assistant, contacts move both ways without an import file:
 - **CRM → Mautic:** *"Take all companies in Twenty with status Customer,
   their people with email, and put them into a new Mautic segment
   'Kunden 2026', tagged twenty."* The assistant calls `list_contact_fields`
-  to map the fields, `create_segment`, then `upsert_contacts` in batches of
-  100 with `dryRun` first (counts, rejected rows, `live_effects`) and saves
-  after you confirm.
+  to map the fields (and `create_contact_field` for missing ones such as
+  `twenty_id` or `deal_stage`), `upsert_companies` for the accounts,
+  `create_segment`, then `upsert_contacts` in batches of 100 with `dryRun`
+  first (counts, rejected rows, `live_effects`) and saves after you confirm.
+- **Dynamic instead of copied:** *"Segment of all qualified deals in
+  Germany who opened an email in the last 30 days."* `create_segment` with
+  filters (`deal_stage`, `country`, `lead_email_read_date`); Mautic keeps it
+  current, no re-sync needed.
 - **Mautic → CRM:** *"Export everyone in segment 'Webinar NIS2' who opened
   the follow-up, with company and position, to Twenty."*
   `search_contacts` with `segment:<alias>` and `includeFields: true`,
@@ -268,6 +284,30 @@ Existing contacts are found by email, so repeated syncs update instead of
 duplicating (`unchanged` when nothing differs). `overwrite: false` keeps
 values that are already set in Mautic.
 
+### Brand emails from layouts
+
+`create_email_from_layout` builds emails from the panels of the Kopexa
+theme instead of free HTML:
+
+```json
+{"name": "Webinar NIS2", "subject": "NIS2 ohne Umwege", "panels": [
+  {"type": "hero", "items": [{"type": "label", "text": "WEBINAR · 12. DEZEMBER"},
+    {"type": "title", "text": "NIS2 ohne Umwege"}, {"type": "button", "text": "Platz sichern", "url": "https://kopexa.com/de/webinar"}]},
+  {"type": "article", "items": [{"type": "text", "html": "Hallo {contactfield=firstname|zusammen}, …"}]},
+  {"type": "cards", "intro": [{"type": "subtitle", "text": "Was dich erwartet"}],
+    "left": [{"type": "title", "text": "Risiken"}], "right": [{"type": "title", "text": "Nachweise"}]}]}
+```
+
+The email is stored like one made in the builder (MJML for editing, HTML
+for sending), so a person can open it in Mautic's builder and adjust it.
+Mautic compiles MJML only in the browser; the theme therefore ships a
+precompiled block library (`themes/kopexa/mcp/blocks.json`), and the
+theme's QA proves that an assembled email is identical to MJML's own
+output. Then `send_test_email` sends it to the signed-in user for a look in
+the real inbox.
+
+![Email built from the Kopexa layout via MCP](img/mcp-layout-email.png)
+
 ## Permissions
 
 Three layers, all of which must allow an action:
@@ -275,7 +315,7 @@ Three layers, all of which must allow an action:
 1. **Scopes** of the token, chosen by the user on the consent page:
    - `mcp:read`
    - `mcp:write` (email and campaign drafts, campaign flows)
-   - `mcp:contacts:write` (contacts and segments)
+   - `mcp:contacts:write` (contacts, companies, custom fields, segments)
    - `mcp:campaigns:live` (opt-in, needed for changes to running campaigns)
 
    A write call with a read-only token is answered with

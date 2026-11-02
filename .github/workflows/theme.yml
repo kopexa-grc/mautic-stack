@@ -43,6 +43,9 @@ jobs:
         run: node render.mjs "$THEME"
       - name: Static checks
         run: node check.mjs "$THEME"
+      - name: Block library for MCP layouts (up to date, assembled HTML == MJML output)
+        if: matrix.theme == 'mautic-theme-kopexa'
+        run: node blocks.mjs --check
       - name: Deliverability (client compatibility, links, rspamd)
         run: ./deliverability.sh "$THEME"
       - name: Screenshots

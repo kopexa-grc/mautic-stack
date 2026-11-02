@@ -33,6 +33,27 @@ placeholders: replace them in the builder (*Image → Asset*) or delete them.
 Card images are 272 × 153 px, the feature image 576 × 288 px (upload at
 twice the size for sharp displays).
 
+## Emails built by assistants
+
+`mcp/blocks.json` is a block library for
+[kopexa/mautic-mcp-bundle](https://github.com/kopexa-grc/mautic-mcp-bundle)
+(`list_email_layouts`, `create_email_from_layout`): an assistant composes
+an email from panels and their elements, the MCP server stores it as MJML
+(editable in the builder) and as HTML (Mautic compiles MJML only in the
+browser, the server needs the HTML to send).
+
+| Panel | Areas and elements |
+|---|---|
+| `hero` | `items`: label, title, lead, button, image (dark surface) |
+| `article` | `items`: label, title, subtitle, lead, text, note, button, button_secondary, image |
+| `cards` | `intro`: subtitle, text; `left` / `right`: image, label, title, text, button |
+
+Header and footer are added automatically, panels are separated by a navy
+gap. `qa/blocks.mjs` generates the library from this theme's head, header,
+footer and tokens; `node qa/blocks.mjs --check` (CI) fails if it is out of
+date and proves that an assembled email is identical to what MJML compiles
+from the assembled MJML. Change the theme, then run `node qa/blocks.mjs`.
+
 ## Builder rules
 
 Mautic's GrapesJS builder imposes rules a template must follow, or emails
