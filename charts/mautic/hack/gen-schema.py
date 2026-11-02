@@ -23,11 +23,12 @@ FREE_FORM = {
     "persistence.annotations", "service.annotations", "ingress.annotations", "httpRoute.annotations",
     "networkPolicy.egress.dnsSelector",
     "mariadb.podAnnotations", "mariadb.podLabels", "mariadb.nodeSelector", "mariadb.affinity",
+    "valkey.podAnnotations", "valkey.podLabels", "valkey.nodeSelector", "valkey.affinity",
     "backup.podAnnotations", "backup.podLabels", "backup.nodeSelector", "backup.affinity",
     "backup.secretEnv", "backup.configMapEnv", "backup.dumpImage",
     "serviceAccount.annotations", "podSecurityContext", "containerSecurityContext",
 }
-RESOURCES = {"web.resources", "init.resources", "worker.resources", "mariadb.resources",
+RESOURCES = {"web.resources", "init.resources", "worker.resources", "mariadb.resources", "valkey.resources",
              "backup.resources", "test.resources"}
 
 PULL_POLICY = {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]}
@@ -41,9 +42,9 @@ OVERRIDES = {
     "mautic.siteUrl": {"type": "string", "pattern": "^(https?://.+)?$",
                        "description": "Public URL of the instance, e.g. https://mautic.example.com (required)."},
     "image.pullPolicy": PULL_POLICY, "mariadb.image.pullPolicy": PULL_POLICY,
-    "backup.resticImage.pullPolicy": PULL_POLICY,
+    "backup.resticImage.pullPolicy": PULL_POLICY, "valkey.image.pullPolicy": PULL_POLICY,
     "image.digest": {"type": "string", "pattern": "^(sha256:[a-f0-9]{64})?$"},
-    "image.tag": INT_OR_STR, "mariadb.image.tag": INT_OR_STR, "backup.resticImage.tag": INT_OR_STR,
+    "image.tag": INT_OR_STR, "mariadb.image.tag": INT_OR_STR, "valkey.image.tag": INT_OR_STR, "backup.resticImage.tag": INT_OR_STR,
     "service.type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
     "service.port": {"type": "integer", "minimum": 1, "maximum": 65535},
     "persistence.accessModes": ACCESS_MODES, "mariadb.persistence.accessModes": ACCESS_MODES,
@@ -59,6 +60,7 @@ OVERRIDES = {
     "mautic.cors.validDomains": {"type": "array", "items": {"type": "string", "pattern": "^https?://[^/]+$"}},
     "mautic.oauth.redirectHosts": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z0-9.-]+$"}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
+    "valkey.maxmemory": {"type": "string", "pattern": "^[0-9]+(b|kb|mb|gb)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},
     "worker.replicaCount": {"type": "integer", "minimum": 0},
 }

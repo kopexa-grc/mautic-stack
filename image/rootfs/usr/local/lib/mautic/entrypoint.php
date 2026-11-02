@@ -77,6 +77,9 @@ const PARAMETER_MAP = [
     'MAUTIC_CORS_VALID_DOMAINS'           => ['cors_valid_domains', 'list'],
     'MAUTIC_IP_LOOKUP_SERVICE'            => ['ip_lookup_service', 'string'],
     'MAUTIC_IP_LOOKUP_AUTH'               => ['ip_lookup_auth', 'string'],
+    // Redis/Valkey cache: see buildParameters().
+    'MAUTIC_REDIS_URL'                    => ['_redis_url', 'string'],
+    'MAUTIC_REDIS_PASSWORD'               => ['_redis_password', 'string'],
 ];
 
 function logmsg(string $msg): void
@@ -125,6 +128,28 @@ function buildParameters(): array
             'base64' => preg_match('/^\s*(<|-----BEGIN)/', $value) ? base64_encode(trim($value)) : trim($value),
             default  => $value,
         };
+    }
+
+    // MAUTIC_REDIS_URL (redis://host:6379) switches Mautic's cache to Redis /
+    // Valkey. Passed as a one-element list of URI strings: given a plain URL,
+    // Mautic (PRedisConnectionHelper) resolves the host into an array of
+    // endpoint arrays, which Predis rejects without a cluster option ("Array
+    // of connection parameters requires cluster, replication or aggregate").
+    // A list of one string is turned into a single connection, and Predis
+    // takes the password from the URI.
+    $redisUrl      = $params['_redis_url'] ?? null;
+    $redisPassword = $params['_redis_password'] ?? null;
+    unset($params['_redis_url'], $params['_redis_password']);
+    if (null !== $redisUrl && '' !== $redisUrl) {
+        if (null !== $redisPassword && '' !== $redisPassword) {
+            $redisUrl = preg_replace('#^(rediss?)://#', '$1://:'.rawurlencode($redisPassword).'@', $redisUrl, 1);
+        }
+        $params['cache_adapter']           = 'mautic.cache.adapter.redis';
+        $params['cache_adapter_tag_aware'] = 'mautic.cache.adapter.redis_tag_aware';
+        $params['cache_adapter_redis']     = [
+            'dsn'     => [$redisUrl],
+            'options' => ['lazy' => true, 'persistent' => 0, 'timeout' => 5, 'read_timeout' => 5, 'retry_interval' => 100],
+        ];
     }
 
     $extra = env('MAUTIC_CONFIG_PARAMETERS');

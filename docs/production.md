@@ -10,7 +10,12 @@ an InnoDB buffer pool sized to the contact base.
 
 ## Storage and scaling
 
-`config/` and `media/` live on one volume (sub-paths).
+One volume holds, in sub-paths:
+
+- `config/`
+- `media/files` and `media/images` (uploads)
+- `translations/` (language packs installed in Mautic)
+- the GeoIP database
 
 - **ReadWriteOnce** (default): web, worker, cron and backup pods are pinned
   to the node of the web pod; web uses the `Recreate` strategy. Fine for a
@@ -19,8 +24,27 @@ an InnoDB buffer pool sized to the contact base.
   `persistence.accessModes=[ReadWriteMany]` to run multiple web replicas
   across nodes, with `RollingUpdate`, PDB and HPA.
 
-PHP sessions are stored in `/tmp` of each web pod. With several web replicas
-enable session affinity at your ingress/gateway (cookie-based).
+**Valkey** (on by default, `valkey.enabled`) holds Mautic's cache and the PHP
+sessions:
+
+- Logins stay valid when a request lands on another web pod. That is what
+  makes several web replicas work without session affinity.
+- The cache takes load off the database.
+- Valkey keeps nothing that has to survive a restart: no volume and no
+  persistence. After a restart users log in again and the cache is rebuilt.
+- Only the Mautic pods may connect (NetworkPolicy), and access is
+  password-protected.
+
+With `valkey.enabled: false`, cache and sessions stay on the local disk of
+each pod. With more than one web replica you then need session affinity at
+the ingress or gateway (cookie-based).
+
+**Object storage.** Mautic keeps uploads on the filesystem; S3 is not
+supported for them. The exception is **assets** (downloads such as PDFs).
+They can be stored in S3 or an S3-compatible store (custom endpoint) with
+Mautic's *Amazon S3* plugin (*Settings → Plugins*). Email images, files from
+the builder, configuration and language packs stay on the volume. For
+several web replicas across nodes, use a ReadWriteMany volume, see above.
 
 ## Queues
 

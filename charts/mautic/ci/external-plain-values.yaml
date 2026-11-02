@@ -8,3 +8,7 @@ externalDatabase:
   port: 3307
   password: not-a-real-password
   tablePrefix: mtc_
+
+# Without Valkey: cache and sessions on the local filesystem of each pod.
+valkey:
+  enabled: false

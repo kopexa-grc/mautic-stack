@@ -19,6 +19,7 @@ documentation: [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-st
   - `values.schema.json` validation, so typos fail at install time
 - **Components**:
   - web and Messenger queue workers
+  - Valkey (hardened image) for Mautic's cache and shared PHP sessions, so several web replicas work without sticky sessions
   - every Mautic cron job as a CronJob
   - optional MariaDB or an external database (credentials from operator Secrets)
 - **Exposure**: Ingress *or* Gateway API `HTTPRoute`.

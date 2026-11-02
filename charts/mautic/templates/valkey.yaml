@@ -1,0 +1,137 @@
+{{- if .Values.valkey.enabled }}
+{{- $name := include "mautic.valkey.fullname" . }}
+{{- if not .Values.valkey.auth.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "valkey") | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+type: Opaque
+data:
+  valkey-password: {{ include "mautic.secretValue" (dict "ctx" . "name" $name "key" "valkey-password" "length" 32) }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "valkey") | nindent 4 }}
+  {{- include "mautic.annotations" . | nindent 2 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: valkey
+      port: 6379
+      targetPort: valkey
+  selector:
+    {{- include "mautic.componentSelector" (dict "ctx" . "component" "valkey") | nindent 4 }}
+---
+# Cache and sessions only: nothing here needs to survive a restart (cache is
+# rebuilt, users log in again), so no volume and no persistence.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "mautic.componentLabels" (dict "ctx" . "component" "valkey") | nindent 4 }}
+  {{- include "mautic.annotations" . | nindent 2 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "mautic.componentSelector" (dict "ctx" . "component" "valkey") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mautic.componentLabels" (dict "ctx" . "component" "valkey") | nindent 8 }}
+        {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.valkey) | nindent 8 }}
+      {{- with (include "mautic.podAnnotations" (dict "ctx" . "c" .Values.valkey) | trim) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      {{- with (.Values.imagePullSecrets | default .Values.global.imagePullSecrets) }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: valkey
+          image: {{ include "mautic.imageRef" (dict "image" .Values.valkey.image "default" "9.1") }}
+          imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
+          env:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mautic.valkey.secretName" . }}
+                  key: valkey-password
+            - name: REDISCLI_AUTH
+              value: $(VALKEY_PASSWORD)
+          args:
+            - --port
+            - "6379"
+            - --requirepass
+            - $(VALKEY_PASSWORD)
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - {{ .Values.valkey.maxmemory | quote }}
+            # Cache entries and sessions all have a TTL.
+            - --maxmemory-policy
+            - volatile-lru
+            {{- range .Values.valkey.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: valkey
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: [valkey-cli, --no-auth-warning, ping]
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: [valkey-cli, --no-auth-warning, ping]
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.valkey.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- include "mautic.scheduling" (dict "ctx" . "c" .Values.valkey) | nindent 6 }}
+      {{- with (.Values.valkey.affinity | default .Values.global.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

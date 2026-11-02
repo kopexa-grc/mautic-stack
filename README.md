@@ -12,7 +12,8 @@ Kubernetes.
   package manager, non-root (uid 65532), read-only root filesystem, rebuilt
   daily, signed (cosign), SBOM + SLSA provenance, multi-arch (amd64/arm64).
 - **Helm chart** `oci://ghcr.io/kopexa-grc/charts/mautic` — web, queue
-  workers, cron jobs, optional MariaDB, Ingress *or* Gateway API, restic
+  workers, cron jobs, Valkey for cache and shared sessions, optional
+  MariaDB, Ingress *or* Gateway API, restic
   backups, SAML single sign-on (Keycloak, Google Workspace, Entra ID, …),
   ingress and egress NetworkPolicies, Pod Security "restricted", validated
   values (`values.schema.json`).

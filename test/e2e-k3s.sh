@@ -123,6 +123,12 @@ mcp_unauth="$(https -o /dev/null -D - -X POST "https://$HOST/mcp" -H 'Content-Ty
 grep -qi "^www-authenticate: Bearer.*resource_metadata=\"https://$HOST/" <<<"$mcp_unauth" \
   && pass "MCP endpoint asks for OAuth through the ingress" || { echo "$mcp_unauth"; fail "MCP endpoint"; }
 
+step "Valkey (cache + sessions)"
+kubectl -n "$NS" rollout status deploy/mautic-valkey --timeout=3m >/dev/null && pass "Valkey running (Pod Security restricted)" || fail "valkey"
+sess="$(kubectl -n "$NS" exec deploy/mautic-valkey -- valkey-cli --no-auth-warning --scan --pattern 'mautic_sess:*' 2>/dev/null | wc -l)"
+keys="$(kubectl -n "$NS" exec deploy/mautic-valkey -- valkey-cli --no-auth-warning dbsize 2>/dev/null || echo 0)"
+[[ "$sess" -ge 1 && "$keys" -gt "$sess" ]] && pass "sessions ($sess) and cache entries in Valkey ($keys keys)" || fail "Valkey usage: sessions=$sess keys=$keys"
+
 step "GeoIP database directory"
 geo="$(kubectl -n "$NS" exec deploy/mautic -c web -- /usr/bin/php -r '
   $d = "/app/var/cache/ip_data"; file_put_contents("$d/.probe", "x");

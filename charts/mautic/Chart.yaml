@@ -1,6 +1,6 @@
 apiVersion: v2
 name: mautic
-description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), optional MariaDB and restic backups.
+description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), Valkey for cache and sessions, optional MariaDB and restic backups.
 type: application
 # Patch releases are cut automatically by CI whenever the chart changes.
 version: 0.3.7
@@ -35,5 +35,7 @@ annotations:
       image: ghcr.io/kopexa-grc/mautic:7.2.2
     - name: restic
       image: ghcr.io/kopexa-grc/restic:0.19
+    - name: valkey
+      image: ghcr.io/kopexa-grc/valkey:9.1
     - name: mariadb
       image: docker.io/library/mariadb:11.4

@@ -555,6 +555,49 @@ mariadb:
   # -- PriorityClass of the mariadb pods.
   priorityClassName: ""
 
+valkey:
+  # -- Deploy Valkey (Redis-compatible, hardened kopexa image) for Mautic's
+  # cache and the PHP sessions. Shared sessions are what makes more than one
+  # web replica work; the cache takes load off the database. Disable to keep
+  # both on the local filesystem of each pod.
+  enabled: true
+  # -- Valkey image.
+  image:
+    repository: ghcr.io/kopexa-grc/valkey
+    tag: "9.1"
+    digest: ""
+    pullPolicy: IfNotPresent
+  auth:
+    # -- Secret with key valkey-password. Generated (and kept) if empty.
+    existingSecret: ""
+  # -- Store PHP sessions in Valkey (logins survive switching web pods).
+  sessions: true
+  # -- Memory limit for data; least recently used entries are evicted.
+  maxmemory: 256mb
+  # -- Extra valkey-server arguments.
+  extraArgs: []
+  # -- Resources of Valkey.
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 320Mi
+  # -- Annotations of the valkey pods.
+  podAnnotations: {}
+  # -- Extra labels of the valkey pods.
+  podLabels: {}
+  # -- Node selector for the valkey pods (overrides `global`).
+  nodeSelector: {}
+  # -- Affinity for the valkey pods (overrides `global`).
+  affinity: {}
+  # -- Tolerations for the valkey pods (overrides `global`).
+  tolerations: []
+  # -- Topology spread constraints for the valkey pods.
+  topologySpreadConstraints: []
+  # -- PriorityClass of the valkey pods.
+  priorityClassName: ""
+
 externalDatabase:
   # Each connection field is either a plain value here or read from a key of
   # existingSecret (secretKeys.<field>; empty = use the plain value).

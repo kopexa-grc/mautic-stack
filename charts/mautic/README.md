@@ -2,7 +2,7 @@
 
 ![Version: 0.3.7](https://img.shields.io/badge/Version-0.3.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.2.2](https://img.shields.io/badge/AppVersion-7.2.2-informational?style=flat-square)  [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
 
-Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), optional MariaDB and restic backups.
+Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), Valkey for cache and sessions, optional MariaDB and restic backups.
 
 Maintained by **[Kopexa](https://kopexa.com)**. Source, issues and full
 documentation: [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-stack).
@@ -19,6 +19,7 @@ documentation: [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-st
   - `values.schema.json` validation, so typos fail at install time
 - **Components**:
   - web and Messenger queue workers
+  - Valkey (hardened image) for Mautic's cache and shared PHP sessions, so several web replicas work without sticky sessions
   - every Mautic cron job as a CronJob
   - optional MariaDB or an external database (credentials from operator Secrets)
 - **Exposure**: Ingress *or* Gateway API `HTTPRoute`.
@@ -180,9 +181,13 @@ Kubernetes: `>=1.29.0-0`
 | mautic.admin.passwordKey | string | `"admin-password"` | Key of the password in `admin.existingSecret`. |
 | mautic.admin.username | string | `"admin"` | Admin user created on first install. |
 | mautic.configParameters | object | `{}` | Any other Mautic parameter (merged last, wins), e.g.   { "default_timezone": "Europe/Berlin", "locale": "de" } |
+| mautic.cors.restrictDomains | bool | `true` | Only allow the origins in validDomains. |
+| mautic.cors.validDomains | list | `[]` | Allowed origins, e.g. [https://www.kopexa.com, https://kopexa.com] |
 | mautic.existingSecret | string | `""` | Secret with Mautic's secret_key (key: secret-key). Generated if empty. |
 | mautic.extraEnv | list | `[]` | Extra environment for all Mautic containers (web, worker, cron, init). |
 | mautic.extraEnvFrom | list | `[]` | Extra `envFrom` sources for all Mautic containers. |
+| mautic.ipLookup.authFrom | object | `{}` | Credentials from a Secret (valueFrom source). For MaxMind GeoLite2: "<account id>:<license key>", e.g. {secretKeyRef: {name: maxmind, key: auth}}. |
+| mautic.ipLookup.service | string | `""` | Lookup service; empty = Mautic's default (maxmind_download, MaxMind GeoLite2, free account). |
 | mautic.mailer.dsn | string | `""` | Symfony Mailer DSN, e.g. smtp://user:pass@smtp.example.com:587 Prefer existingSecret, since a DSN usually contains credentials. |
 | mautic.mailer.dsnKey | string | `"mailer-dsn"` | Key of the DSN in `mailer.existingSecret`. |
 | mautic.mailer.existingSecret | string | `""` | Secret holding the mailer DSN (preferred over `dsn`). |
@@ -234,6 +239,20 @@ Kubernetes: `>=1.29.0-0`
 | serviceAccount.create | bool | `true` | Create a ServiceAccount. |
 | serviceAccount.name | string | `""` | Name of the ServiceAccount (generated if empty). |
 | test | object | `{"resources":{"limits":{"memory":"64Mi"},"requests":{"cpu":"10m","memory":"32Mi"}}}` | Resources of the `helm test` pod. |
+| valkey.affinity | object | `{}` | Affinity for the valkey pods (overrides `global`). |
+| valkey.auth.existingSecret | string | `""` | Secret with key valkey-password. Generated (and kept) if empty. |
+| valkey.enabled | bool | `true` | Deploy Valkey (Redis-compatible, hardened kopexa image) for Mautic's cache and the PHP sessions. Shared sessions are what makes more than one web replica work; the cache takes load off the database. Disable to keep both on the local filesystem of each pod. |
+| valkey.extraArgs | list | `[]` | Extra valkey-server arguments. |
+| valkey.image | object | `{"digest":"","pullPolicy":"IfNotPresent","repository":"ghcr.io/kopexa-grc/valkey","tag":"9.1"}` | Valkey image. |
+| valkey.maxmemory | string | `"256mb"` | Memory limit for data; least recently used entries are evicted. |
+| valkey.nodeSelector | object | `{}` | Node selector for the valkey pods (overrides `global`). |
+| valkey.podAnnotations | object | `{}` | Annotations of the valkey pods. |
+| valkey.podLabels | object | `{}` | Extra labels of the valkey pods. |
+| valkey.priorityClassName | string | `""` | PriorityClass of the valkey pods. |
+| valkey.resources | object | `{"limits":{"memory":"320Mi"},"requests":{"cpu":"20m","memory":"64Mi"}}` | Resources of Valkey. |
+| valkey.sessions | bool | `true` | Store PHP sessions in Valkey (logins survive switching web pods). |
+| valkey.tolerations | list | `[]` | Tolerations for the valkey pods (overrides `global`). |
+| valkey.topologySpreadConstraints | list | `[]` | Topology spread constraints for the valkey pods. |
 | web.affinity | object | `{}` | Affinity for the web pods (overrides `global`). |
 | web.apache | object | `{"maxRequestWorkers":25}` | Apache worker settings; `maxRequestWorkers` caps concurrent requests per pod. |
 | web.autoscaling | object | `{"enabled":false,"maxReplicas":5,"minReplicas":1,"targetCPUUtilizationPercentage":80}` | HorizontalPodAutoscaler on CPU. |

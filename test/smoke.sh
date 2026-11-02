@@ -18,7 +18,7 @@ dump() {
   echo "--- db logs";   docker logs "$run_id-db" 2>&1 | tail -10 || true
 }
 cleanup() {
-  docker rm -f "$run_id-db" "$run_id-web" "$run_id-web2" "$run_id-tls" >/dev/null 2>&1 || true
+  docker rm -f "$run_id-db" "$run_id-web" "$run_id-web2" "$run_id-tls" "$run_id-valkey" "$run_id-replica" >/dev/null 2>&1 || true
   docker volume rm -f "$run_id-config" "$run_id-media" >/dev/null 2>&1 || true
   docker network rm "$net" >/dev/null 2>&1 || true
 }
@@ -33,6 +33,11 @@ docker run -d --name "$run_id-db" --network "$net" \
   -e MARIADB_DATABASE=mautic -e MARIADB_USER=mautic -e MARIADB_PASSWORD=mautic \
   -e MARIADB_RANDOM_ROOT_PASSWORD=1 "$DB_IMAGE" \
   --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci >/dev/null
+# Valkey for Mautic's cache and the PHP sessions (as the chart does by default).
+VALKEY_IMAGE="${VALKEY_IMAGE:-ghcr.io/kopexa-grc/valkey:9.1}"
+docker run -d --name "$run_id-valkey" --network "$net" --read-only --cap-drop ALL "$VALKEY_IMAGE" \
+  --requirepass valkey-smoke --save "" --appendonly no >/dev/null
+valkey() { docker exec "$run_id-valkey" valkey-cli -a valkey-smoke --no-auth-warning "$@"; }
 
 # Same hardening as the Helm chart: read-only rootfs, no capabilities,
 # writable /tmp + var, persistent config + media.
@@ -50,6 +55,8 @@ env=(
   -e MAUTIC_TRUSTED_PROXIES=172.16.0.0/12
   -e "MAUTIC_CORS_VALID_DOMAINS=https://www.kopexa.com https://kopexa.com"
   -e MAUTIC_MESSENGER_DSN_EMAIL=doctrine://default -e MAUTIC_MESSENGER_DSN_HIT=doctrine://default
+  -e "MAUTIC_REDIS_URL=redis://$run_id-valkey:6379" -e MAUTIC_REDIS_PASSWORD=valkey-smoke
+  -e PHP_SESSION_SAVE_HANDLER=redis -e "PHP_SESSION_SAVE_PATH=tcp://$run_id-valkey:6379?auth=valkey-smoke&prefix=mautic_sess:"
 )
 # Postal webhook signing key (the test plays the Postal server).
 postal_key="$(mktemp)"; openssl genrsa -out "$postal_key" 2048 2>/dev/null
@@ -135,6 +142,16 @@ if grep -q 'name="_username"' /tmp/mautic-smoke-page.html || [[ "$final" != 200*
   fail "admin login"
 fi
 pass "admin login works"
+
+echo "Valkey (cache + sessions)"
+[[ "$(valkey --scan --pattern 'mautic_sess:*' | wc -l)" -ge 1 ]] && pass "PHP sessions stored in Valkey" || fail "no sessions in Valkey"
+[[ "$(valkey --scan | grep -vc '^mautic_sess:')" -ge 1 ]] && pass "Mautic cache entries in Valkey" || fail "no cache entries in Valkey"
+docker run -d --name "$run_id-replica" --network "$net" "${hardening[@]}" "${env[@]}" -p 127.0.0.1::8080 "$IMG" web >/dev/null
+replica="http://127.0.0.1:$(docker port "$run_id-replica" 8080/tcp | head -1 | sed 's/.*://')"
+for _ in $(seq 1 60); do curl -fs "$replica/healthz" >/dev/null && break; sleep 1; done
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$replica/s/dashboard")" == 200 ]] \
+  && pass "login on one web pod is valid on another (shared sessions)" || fail "session not shared between web pods"
+docker rm -f "$run_id-replica" >/dev/null
 
 echo "Kopexa email theme"
 [[ "$(code /themes/kopexa/assets/logo-light.png)" == 200 ]] && pass "theme assets served" || fail "theme assets not served"

@@ -28,6 +28,8 @@ secret).
 | `MAUTIC_OAUTH_PRIVATE_KEY`, `MAUTIC_OAUTH_ENCRYPTION_KEY`, `MAUTIC_OAUTH_REDIRECT_HOSTS`, `MAUTIC_OAUTH_RESOURCE` | `kopexa_oauth_*` | OAuth 2.1 for MCP clients, see [oauth.md](oauth.md) |
 | `MAUTIC_CORS_VALID_DOMAINS`, `MAUTIC_CORS_RESTRICT_DOMAINS` | `cors_valid_domains`, `cors_restrict_domains` | origins allowed to call Mautic from your websites (tracking, forms, JS API); comma/space separated |
 | `MAUTIC_IP_LOOKUP_SERVICE`, `MAUTIC_IP_LOOKUP_AUTH` | `ip_lookup_service`, `ip_lookup_auth` | GeoIP; for MaxMind GeoLite2 the auth is `<account id>:<license key>` |
+| `MAUTIC_REDIS_URL`, `MAUTIC_REDIS_PASSWORD` | `cache_adapter*` | Mautic's cache in Redis/Valkey, e.g. `redis://valkey:6379` (set by the chart when `valkey.enabled`) |
+| `PHP_SESSION_SAVE_HANDLER`, `PHP_SESSION_SAVE_PATH` | (php.ini) | `files` + `/tmp` (default), or `redis` + `tcp://valkey:6379?auth=…` for sessions shared between replicas |
 | `MAUTIC_MCP_LIVE_CAMPAIGN_EDITS` | `kopexa_mcp_live_campaign_edits` | `false` makes running campaigns read-only for MCP, see [mcp.md](mcp.md#what-mcp-changes-can-trigger) |
 | `MAUTIC_CONFIG_PARAMETERS` | any | JSON object, merged last (wins) |
 | `MAUTIC_ADMIN_USERNAME`, `MAUTIC_ADMIN_EMAIL`, `MAUTIC_ADMIN_PASSWORD`, `MAUTIC_ADMIN_FIRSTNAME`, `MAUTIC_ADMIN_LASTNAME` | — | used by `init` for the first installation only |

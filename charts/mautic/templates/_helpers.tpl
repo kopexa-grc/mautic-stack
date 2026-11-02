@@ -82,6 +82,14 @@ annotations:
 {{- printf "%s-mariadb" (include "mautic.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "mautic.valkey.fullname" -}}
+{{- printf "%s-valkey" (include "mautic.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "mautic.valkey.secretName" -}}
+{{- default (include "mautic.valkey.fullname" .) .Values.valkey.auth.existingSecret }}
+{{- end }}
+
 {{- define "mautic.mariadb.secretName" -}}
 {{- default (include "mautic.mariadb.fullname" .) .Values.mariadb.auth.existingSecret }}
 {{- end }}
@@ -256,6 +264,10 @@ topologySpreadConstraints:
 - name: data
   mountPath: /app/var/cache/ip_data
   subPath: ip_data
+# Language packs installed in Mautic (Configuration → System Settings).
+- name: data
+  mountPath: /app/docroot/translations
+  subPath: translations
 {{- end }}
 
 {{/*
@@ -394,6 +406,26 @@ affinity:
 {{- end }}
 - name: MAUTIC_MCP_LIVE_CAMPAIGN_EDITS
   value: {{ .Values.mautic.mcp.liveCampaignEdits | toString | quote }}
+{{- end }}
+{{- if .Values.valkey.enabled }}
+{{- $host := include "mautic.valkey.fullname" . }}
+- name: VALKEY_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "mautic.valkey.secretName" . }}
+      key: valkey-password
+# Mautic's cache (Predis)
+- name: MAUTIC_REDIS_URL
+  value: "redis://{{ $host }}:6379"
+- name: MAUTIC_REDIS_PASSWORD
+  value: $(VALKEY_PASSWORD)
+{{- if .Values.valkey.sessions }}
+# PHP sessions (php-redis): shared by all web replicas
+- name: PHP_SESSION_SAVE_HANDLER
+  value: redis
+- name: PHP_SESSION_SAVE_PATH
+  value: "tcp://{{ $host }}:6379?auth=$(VALKEY_PASSWORD)&prefix=mautic_sess:"
+{{- end }}
 {{- end }}
 {{- with .Values.mautic.cors.validDomains }}
 - name: MAUTIC_CORS_VALID_DOMAINS
