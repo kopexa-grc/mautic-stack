@@ -52,3 +52,7 @@ community servers were written in a few days in spring 2026 and have not
 been updated since. See [#2](https://github.com/kopexa-grc/mautic-stack/issues/2) before
 picking one; the planned approach is a Mautic plugin built on the official
 PHP MCP SDK (`mcp/sdk`) and `symfony/mcp-bundle`.
+
+Our own extensions (*ours* above) can also be installed in any Mautic 7
+installation via Composer once published; see
+[docs/publishing.md](publishing.md).

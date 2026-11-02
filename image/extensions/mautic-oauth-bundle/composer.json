@@ -2,7 +2,6 @@
     "name": "kopexa/mautic-oauth-bundle",
     "description": "OAuth 2.1 authorization server for Mautic (authorization code + PKCE S256, refresh tokens, dynamic client registration, RFC 8414 metadata, JWKS). Used by MCP clients such as Claude and ChatGPT.",
     "type": "mautic-plugin",
-    "version": "0.2.0",
     "license": "Apache-2.0",
     "keywords": [
         "mautic",
@@ -12,7 +11,12 @@
         "pkce",
         "mcp"
     ],
-    "homepage": "https://github.com/kopexa-grc/mautic-stack",
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-oauth-bundle",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "source": "https://github.com/kopexa-grc/mautic-oauth-bundle",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
     "authors": [
         {
             "name": "Kopexa",
@@ -29,5 +33,6 @@
         "league/oauth2-server": "^9.4",
         "guzzlehttp/psr7": "^2.7",
         "defuse/php-encryption": "^2.4"
-    }
+    },
+    "minimum-stability": "stable"
 }

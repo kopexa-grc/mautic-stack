@@ -30,19 +30,20 @@ RUN composer create-project --no-progress --no-dev \
       "mautic/recommended-project:${MAUTIC_VERSION}" mautic
 
 # Built-in extensions: third-party packages (image/plugins.txt) and our own
-# bundles (image/extensions/*, installed from a local path repository).
+# bundles (image/extensions/*, installed from a local path repository). Our
+# packages carry their version in a VERSION file (published packages get it
+# from git tags, so composer.json has none); the path repository is told.
 COPY plugins.txt /build/plugins.txt
 COPY extensions/ /build/extensions/
 # QA tooling (qa/) stays in the repository: themes are served from the web
 # root, so nothing but the theme itself may be installed.
 RUN rm -rf /build/extensions/*/qa \
  && cd mautic \
- && composer config repositories.kopexa '{"type": "path", "url": "/build/extensions/*", "options": {"symlink": false}}' \
+ && php -r '$v = []; foreach (glob("/build/extensions/*/composer.json") as $f) { $v[json_decode(file_get_contents($f), true)["name"]] = trim(file_get_contents(dirname($f)."/VERSION")); } file_put_contents("/build/extension-versions.json", json_encode($v));' \
+ && composer config repositories.kopexa "{\"type\": \"path\", \"url\": \"/build/extensions/*\", \"options\": {\"symlink\": false, \"versions\": $(cat /build/extension-versions.json)}}" \
  && composer config --no-plugins allow-plugins.php-http/discovery false \
  && { grep -vE '^\s*(#|$)' /build/plugins.txt; \
-      for f in /build/extensions/*/composer.json; do \
-        php -r '$c = json_decode(file_get_contents($argv[1]), true); echo $c["name"], ":", $c["version"], "\n";' "$f"; \
-      done; } \
+      php -r 'foreach (json_decode(file_get_contents("/build/extension-versions.json"), true) as $n => $v) echo "$n:$v\n";'; } \
     | xargs composer require --no-progress --update-no-dev --ignore-platform-req=ext-imap
 
 WORKDIR /build/mautic

@@ -4,6 +4,25 @@
 hard delivery failures reported by Postal mark the contact as
 *Do Not Contact – bounced*, so Mautic stops mailing dead addresses.
 
+## Installation
+
+Mautic 7 (Composer-based installation):
+
+```bash
+composer require kopexa/mautic-postal-bundle
+php bin/console mautic:plugins:reload
+```
+
+Configure the Postal key (`postal_jwks_url` or `postal_webhook_public_key`) and add a webhook to `https://<mautic>/mailer/callback` in Postal.
+
+Already included in the hardened Mautic image
+[`ghcr.io/kopexa-grc/mautic`](https://github.com/kopexa-grc/mautic-stack).
+
+> Development happens in
+> [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-postal-bundle);
+> the package repository is a read-only mirror. Issues and pull requests
+> go to mautic-stack.
+
 ## How it works
 
 Postal sends webhooks to Mautic's transport callback endpoint

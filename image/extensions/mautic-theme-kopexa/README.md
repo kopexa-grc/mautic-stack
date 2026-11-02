@@ -4,6 +4,25 @@ MJML email theme for Mautic 7's GrapesJS builder, built from the design
 tokens of [brand.kopexa.com](https://brand.kopexa.com) and shipped in the
 kopexa Mautic image (`themes/kopexa`).
 
+## Installation
+
+Mautic 7 (Composer-based installation):
+
+```bash
+composer require kopexa/mautic-theme-kopexa
+php bin/console cache:clear
+```
+
+Pick the theme *Kopexa* when creating an email in the builder.
+
+Already included in the hardened Mautic image
+[`ghcr.io/kopexa-grc/mautic`](https://github.com/kopexa-grc/mautic-stack).
+
+> Development happens in
+> [kopexa-grc/mautic-stack](https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa);
+> the package repository is a read-only mirror. Issues and pull requests
+> go to mautic-stack.
+
 ![Preview](thumbnail.png)
 
 ## Design

@@ -2,11 +2,26 @@
     "name": "kopexa/mautic-postal-bundle",
     "description": "Postal mail server integration for Mautic: bounce and delivery-failure webhooks with signature verification.",
     "type": "mautic-plugin",
-    "version": "0.1.0",
     "license": "Apache-2.0",
-    "keywords": ["mautic", "plugin", "postal", "bounce", "webhook"],
-    "homepage": "https://github.com/kopexa-grc/mautic-stack",
-    "authors": [{"name": "Kopexa", "homepage": "https://kopexa.com"}],
+    "keywords": [
+        "mautic",
+        "plugin",
+        "postal",
+        "bounce",
+        "webhook"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-postal-bundle",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "source": "https://github.com/kopexa-grc/mautic-postal-bundle",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
     "extra": {
         "install-directory-name": "KopexaPostalBundle"
     },
@@ -15,5 +30,6 @@
         "ext-json": "*",
         "ext-openssl": "*",
         "mautic/core-lib": "^7.0"
-    }
+    },
+    "minimum-stability": "stable"
 }

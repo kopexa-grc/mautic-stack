@@ -2,15 +2,30 @@
     "name": "kopexa/mautic-theme-kopexa",
     "description": "Kopexa email theme for Mautic (MJML, GrapesJS builder), built from brand.kopexa.com design tokens.",
     "type": "mautic-theme",
-    "version": "0.1.0",
     "license": "Apache-2.0",
-    "keywords": ["mautic", "theme", "mjml", "email"],
-    "homepage": "https://github.com/kopexa-grc/mautic-stack",
-    "authors": [{"name": "Kopexa", "homepage": "https://kopexa.com"}],
+    "keywords": [
+        "mautic",
+        "theme",
+        "mjml",
+        "email"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "source": "https://github.com/kopexa-grc/mautic-theme-kopexa",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
     "extra": {
         "install-directory-name": "kopexa"
     },
     "require": {
         "mautic/core-lib": "^7.0"
-    }
+    },
+    "minimum-stability": "stable"
 }
