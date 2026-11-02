@@ -84,6 +84,13 @@ final class AuthorizeController
         try {
             $authRequest = $this->validate($request, $entry['query']);
             $approved    = 'approve' === $request->request->get('decision');
+            // The user may grant fewer scopes than requested (checkboxes).
+            // mcp:read is always kept; opt-in scopes only when ticked.
+            $ticked = (array) ($request->request->all()['scopes'] ?? []);
+            $authRequest->setScopes(array_values(array_filter(
+                $authRequest->getScopes(),
+                fn ($scope): bool => 'mcp:read' === $scope->getIdentifier() || in_array($scope->getIdentifier(), $ticked, true)
+            )));
             $authRequest->setUser(new User($userId));
             $authRequest->setAuthorizationApproved($approved);
 
@@ -155,9 +162,20 @@ final class AuthorizeController
         $redirect = (string) ($authRequest->getRedirectUri() ?? $authRequest->getClient()->getRedirectUri()[0] ?? '');
         $host     = (string) parse_url($redirect, PHP_URL_HOST);
         $items    = '';
+        $optin    = $this->settings->optinScopes();
         foreach ($authRequest->getScopes() as $scope) {
-            $id = $scope->getIdentifier();
-            $items .= sprintf('<li><code>%s</code> %s</li>', $e($id), $e($scopes[$id] ?? ''));
+            $id       = $scope->getIdentifier();
+            $required = 'mcp:read' === $id;
+            $isOptin  = in_array($id, $optin, true);
+            $items .= sprintf(
+                '<li class="%s"><label><input type="checkbox" name="scopes[]" value="%s"%s%s> <code>%s</code> %s</label></li>',
+                $isOptin ? 'optin' : '',
+                $e($id),
+                $isOptin ? '' : ' checked',
+                $required ? ' disabled' : '',
+                $e($id),
+                $e($scopes[$id] ?? '')
+            );
         }
         $token = $this->csrf->getToken(self::CSRF_ID)->getValue();
 
@@ -169,13 +187,14 @@ final class AuthorizeController
 body{margin:0;font:16px/1.5 system-ui,sans-serif;background:#f4f6f8;color:#10253d}
 main{max-width:30rem;margin:4rem auto;padding:2rem;background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 h1{font-size:1.3rem;margin:0 0 1rem} code{background:#eef2f6;padding:0 .3em;border-radius:4px}
-ul{padding-left:1.2rem} .muted{color:#5b6b7d;font-size:.9rem}
+ul{list-style:none;padding-left:0} li{margin:.5rem 0} .muted{color:#5b6b7d;font-size:.9rem}
+li.optin{border-left:3px solid #c62828;padding-left:.6rem;color:#7f1d1d}
 .actions{display:flex;gap:.75rem;margin-top:1.5rem}
 button{flex:1;padding:.7rem;border-radius:8px;border:1px solid #006cb8;font:inherit;cursor:pointer}
 .approve{background:#006cb8;color:#fff} .deny{background:#fff;color:#006cb8}
 </style></head><body><main>
 <h1><strong>{$e($authRequest->getClient()->getName())}</strong> wants to access Mautic</h1>
-<p>Signed in as <strong>{$e($userName)}</strong> ({$e($email)}). The application acts with your Mautic permissions and may:</p>
+<p>Signed in as <strong>{$e($userName)}</strong> ({$e($email)}). The application acts with your Mautic permissions. Choose what it may do:</p>
 <ul>{$items}</ul>
 <p class="muted">After approval you are sent back to <strong>{$e($host)}</strong>. You can revoke access by disconnecting the application in its settings.</p>
 <form method="post">

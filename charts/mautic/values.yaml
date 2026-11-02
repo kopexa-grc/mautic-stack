@@ -124,6 +124,15 @@ mautic:
     # -- Audience of issued tokens (RFC 8707). Empty: <siteUrl>/mcp.
     resource: ""
 
+  # MCP server for AI assistants (needs oauth.enabled). See docs/mcp.md.
+  mcp:
+    # -- Allow assistants to change RUNNING (published) campaigns. Such
+    # changes are live and Mautic may send emails because of them. Even when
+    # true, each client needs the scope mcp:campaigns:live, which users must
+    # tick explicitly on the consent page. false: running campaigns are
+    # read-only for MCP (dry runs still work).
+    liveCampaignEdits: true
+
   # Messenger transports. doctrine://default queues in the database and is
   # processed by the worker Deployment; sync:// sends inline (no worker).
   messenger:

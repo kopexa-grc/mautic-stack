@@ -387,6 +387,8 @@ affinity:
 - name: MAUTIC_OAUTH_RESOURCE
   value: {{ . | quote }}
 {{- end }}
+- name: MAUTIC_MCP_LIVE_CAMPAIGN_EDITS
+  value: {{ .Values.mautic.mcp.liveCampaignEdits | toString | quote }}
 {{- end }}
 {{- with .Values.mautic.configParameters }}
 - name: MAUTIC_CONFIG_PARAMETERS

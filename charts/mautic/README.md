@@ -188,6 +188,7 @@ Kubernetes: `>=1.29.0-0`
 | mautic.mailer.existingSecret | string | `""` | Secret holding the mailer DSN (preferred over `dsn`). |
 | mautic.mailer.fromEmail | string | `""` | Default sender address. |
 | mautic.mailer.fromName | string | `""` | Default sender name. |
+| mautic.mcp.liveCampaignEdits | bool | `true` | Allow assistants to change RUNNING (published) campaigns. Such changes are live and Mautic may send emails because of them. Even when true, each client needs the scope mcp:campaigns:live, which users must tick explicitly on the consent page. false: running campaigns are read-only for MCP (dry runs still work). |
 | mautic.messenger.email | string | `"doctrine://default"` | Messenger transport for emails (`doctrine://default` = queued in the DB, `sync://` = inline). |
 | mautic.messenger.failed | string | `""` | Messenger transport for failed messages. |
 | mautic.messenger.hit | string | `"doctrine://default"` | Messenger transport for page/email hits. |

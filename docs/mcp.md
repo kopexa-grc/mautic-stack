@@ -198,7 +198,7 @@ removed.
 |---|---|
 | Create or change an email | Saved **unpublished**. Published or already sent emails cannot be changed. A person reviews and publishes it in Mautic (each result contains its `url`). Nothing is sent. |
 | Create a campaign, edit a campaign that is not published | Draft only. No contact enters it and nothing runs until a person publishes it. |
-| **Edit a running (published) campaign** | **Live.** Mautic's scheduler (`mautic:campaigns:trigger`) executes added and changed steps for contacts reaching them. Email steps send to real recipients; webhook, push and similar steps reach external systems. Contacts already scheduled on a changed step keep their time but get the new content (for example, the email now set in the step). |
+| **Edit a running (published) campaign** | Only with the scope `mcp:campaigns:live` and if the instance allows it (see below). Then **live.** Mautic's scheduler (`mautic:campaigns:trigger`) executes added and changed steps for contacts reaching them. Email steps send to real recipients; webhook, push and similar steps reach external systems. Contacts already scheduled on a changed step keep their time but get the new content (for example, the email now set in the step). |
 | Publish, unpublish, send an email or campaign directly | Not possible via MCP. |
 
 Safeguards for running campaigns:
@@ -207,10 +207,18 @@ Safeguards for running campaigns:
   when it touches a running campaign, also in a `dryRun`. It lists the
   outbound steps (email, message, webhook, push) that were added or changed
   and how many contacts are in the campaign.
-- **Assistant instructions.** The server tells the assistant to dry-run
-  first, show `live_effects` and save only after the user confirms. This is
-  an instruction to the assistant, **not a technical lock**: a client can
-  save without a dry run.
+- **Two technical locks.** Saving a change to a running campaign needs
+  both of these. Otherwise the tool refuses; a dry run still works and
+  shows `save_allowed: false` with the reason.
+
+  | Lock | Set by | Default |
+  |---|---|---|
+  | `mautic.mcp.liveCampaignEdits` (env `MAUTIC_MCP_LIVE_CAMPAIGN_EDITS`) | Operator, for the whole instance | `true`. With `false`, running campaigns are read-only for MCP, whatever the token says. |
+  | Scope `mcp:campaigns:live` | User, per connected client, on the consent page | **Not granted.** The scope is shown highlighted and unticked; the user has to tick it explicitly. |
+
+- **Assistant instructions.** In addition, the server tells the assistant
+  to dry-run first, show `live_effects` and save only after the user
+  confirms. This is a convention, not a lock; the locks above are.
 - **No moving steps; removing only with confirmation.** Steps cannot be
   moved. They can only be removed with `confirm` / `allow_deletions`, after
   a dry run shows the contacts waiting on them.
@@ -220,17 +228,30 @@ Safeguards for running campaigns:
 - **Audit log.** Each change is recorded with the OAuth client id and
   what was added, changed and removed.
 
-If assistants should not change running campaigns at all, there is no
-role setting for that yet. Mautic's edit permission covers published and
-unpublished campaigns alike. Use a read-only token (`mcp:read`) or a role
-without campaign edit rights.
+To keep assistants away from running campaigns entirely, set
+`mautic.mcp.liveCampaignEdits: false`. Mautic's own role permissions cannot
+express this: the edit permission covers published and unpublished
+campaigns alike.
+
+```yaml
+mautic:
+  oauth:
+    enabled: true
+  mcp:
+    liveCampaignEdits: false   # running campaigns are read-only for MCP
+```
 
 ## Permissions
 
 Three layers, all of which must allow an action:
 
-1. **Scope** of the token: `mcp:read` or `mcp:write`, chosen at consent. A
-   write call with a read-only token is answered with `403 insufficient_scope`.
+1. **Scopes** of the token, chosen by the user on the consent page:
+   - `mcp:read`
+   - `mcp:write`
+   - `mcp:campaigns:live` (opt-in, needed for changes to running campaigns)
+
+   A write call with a read-only token is answered with
+   `403 insufficient_scope`.
 2. **Mautic role** of the user who approved the client. The same
    own/other checks as the Mautic UI and API apply (`lead:leads:viewother`,
    `email:emails:create`, `email:emails:editown`, …). Users who may only see
@@ -285,6 +306,11 @@ disabled Mautic user loses access immediately, even with a valid token.
   - refused moves
   - removal only after dry run and confirmation, with the redirect stored in the database
   - the cron keeps running afterwards
+- the locks:
+  - `mcp:campaigns:live` is offered unticked and only granted when ticked
+  - without it a running campaign is refused (dry run: `save_allowed: false`)
+  - a second replica with `liveCampaignEdits=false` refuses even with the
+    scope, reusing the same MCP session from the database
 - the two realistic scenarios above (`test/mcp-scenarios.sh`), executed by
   Mautic including a real email open
 - a restricted role that sees no contacts

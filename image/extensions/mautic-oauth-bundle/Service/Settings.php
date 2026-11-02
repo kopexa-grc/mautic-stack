@@ -53,6 +53,14 @@ class Settings
         return is_array($scopes) ? $scopes : [];
     }
 
+    /** @return list<string> scopes the user must tick explicitly on the consent page */
+    public function optinScopes(): array
+    {
+        $scopes = $this->parameters->get('kopexa_oauth_optin_scopes');
+
+        return array_values(array_filter(is_array($scopes) ? $scopes : [], 'is_string'));
+    }
+
     /** @return list<string> */
     public function redirectHosts(): array
     {

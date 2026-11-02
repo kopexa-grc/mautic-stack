@@ -195,6 +195,15 @@
             }
           }
         },
+        "mcp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "liveCampaignEdits": {
+              "type": "boolean"
+            }
+          }
+        },
         "messenger": {
           "type": "object",
           "additionalProperties": false,

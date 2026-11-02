@@ -2,7 +2,7 @@
     "name": "kopexa/mautic-oauth-bundle",
     "description": "OAuth 2.1 authorization server for Mautic (authorization code + PKCE S256, refresh tokens, dynamic client registration, RFC 8414 metadata, JWKS). Used by MCP clients such as Claude and ChatGPT.",
     "type": "mautic-plugin",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "license": "Apache-2.0",
     "keywords": [
         "mautic",

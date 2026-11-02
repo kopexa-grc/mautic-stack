@@ -72,6 +72,7 @@ const PARAMETER_MAP = [
     'MAUTIC_OAUTH_ENCRYPTION_KEY'         => ['kopexa_oauth_encryption_key', 'string'],
     'MAUTIC_OAUTH_REDIRECT_HOSTS'         => ['kopexa_oauth_redirect_hosts', 'list'],
     'MAUTIC_OAUTH_RESOURCE'               => ['kopexa_oauth_resource', 'string'],
+    'MAUTIC_MCP_LIVE_CAMPAIGN_EDITS'      => ['kopexa_mcp_live_campaign_edits', 'bool'],
 ];
 
 function logmsg(string $msg): void
@@ -115,6 +116,7 @@ function buildParameters(): array
         }
         $params[$key] = match ($type) {
             'list'   => array_values(array_filter(preg_split('/[\s,]+/', $value) ?: [])),
+            'bool'   => in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true),
             // Already base64 (as Mautic stores it) is kept; XML/PEM is encoded.
             'base64' => preg_match('/^\s*(<|-----BEGIN)/', $value) ? base64_encode(trim($value)) : trim($value),
             default  => $value,

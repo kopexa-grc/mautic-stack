@@ -8,7 +8,7 @@ use MauticPlugin\KopexaOAuthBundle\Controller\ServerController;
 return [
     'name'        => 'OAuth 2.1',
     'description' => 'OAuth 2.1 authorization server (authorization code + PKCE, dynamic client registration) for MCP clients.',
-    'version'     => '0.1.0',
+    'version'     => '0.2.0',
     'author'      => 'Kopexa',
     'routes'      => [
         // Public endpoints (no Mautic session).
@@ -55,7 +55,14 @@ return [
         // Hosts that dynamically registered clients may redirect to.
         'kopexa_oauth_redirect_hosts' => ['claude.ai', 'claude.com', 'chatgpt.com', 'chat.openai.com', 'localhost', '127.0.0.1'],
         // Scopes this server issues.
-        'kopexa_oauth_scopes'         => ['mcp:read' => 'Read contacts, segments, emails, campaigns and statistics', 'mcp:write' => 'Create and edit email and campaign drafts'],
+        'kopexa_oauth_scopes'         => [
+            'mcp:read'           => 'Read contacts, segments, emails, campaigns and statistics',
+            'mcp:write'          => 'Create unpublished emails and campaigns, edit campaign flows of unpublished campaigns',
+            'mcp:campaigns:live' => 'Change RUNNING campaigns: changes are live and Mautic may send emails because of them',
+        ],
+        // Scopes the consent page shows unticked and highlighted: the user
+        // has to allow them explicitly, even if the client asks for them.
+        'kopexa_oauth_optin_scopes'   => ['mcp:campaigns:live'],
         // Resource (audience) tokens are issued for; default <site_url>/mcp.
         'kopexa_oauth_resource'       => '',
         'kopexa_oauth_access_ttl'     => 3600,

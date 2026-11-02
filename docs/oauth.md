@@ -64,7 +64,8 @@ the endpoints answer `503`.
 | **Redirect URIs** | `https` on an allow-listed host or its subdomains, or `http(s)` on loopback (RFC 8252) if `localhost`/`127.0.0.1` is allow-listed. Matched exactly at authorization time (loopback: any port). |
 | **Who can authorize** | Any Mautic user, after Mautic's normal login (password or [SAML SSO](sso.md)). The consent page names the client, the scopes and the redirect host. The decision is written to Mautic's audit log. |
 | **Permissions** | Tokens carry the Mautic user (`sub`). The MCP server acts with that user's Mautic role. Give AI access to a dedicated role with only the permissions it needs. |
-| **Scopes** | `mcp:read` (default if none requested), `mcp:write` (draft emails and campaigns). |
+| **Scopes** | `mcp:read` (default if none requested), `mcp:write` (unpublished emails and campaigns, flows of unpublished campaigns), `mcp:campaigns:live` (change *running* campaigns, see [docs/mcp.md](mcp.md#what-mcp-changes-can-trigger)). |
+| **Consent** | The consent page lists the requested scopes as checkboxes. The user can grant fewer than requested. `mcp:read` is always included. **Opt-in scopes** (`kopexa_oauth_optin_scopes`, default `mcp:campaigns:live`) are highlighted and unticked, so even a client that requests everything does not get them unless the user ticks them. |
 | **Access tokens** | [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) JWTs (`typ: at+jwt`, RS256), 1 h, audience = `resource` ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707)). Verified offline against `/oauth2/jwks.json`, not stored. |
 | **Refresh tokens** | 30 days, encrypted, rotated on every use (an old token is rejected). Revocable via `/oauth2/revoke` ([RFC 7009](https://www.rfc-editor.org/rfc/rfc7009)), which revokes all grants of that user for that client. |
 | **Codes** | 10 minutes, single use, bound to client, redirect URI and PKCE challenge. |
