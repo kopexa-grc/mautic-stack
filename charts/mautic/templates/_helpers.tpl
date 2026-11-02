@@ -206,6 +206,9 @@ upgrades), or a new random one.
 - name: var
   emptyDir:
     sizeLimit: {{ .Values.ephemeral.varSizeLimit }}
+- name: cache
+  emptyDir:
+    sizeLimit: {{ .Values.ephemeral.varSizeLimit }}
 {{- end }}
 
 {{/*
@@ -259,6 +262,11 @@ topologySpreadConstraints:
   mountPath: /tmp
 - name: var
   mountPath: /app/var
+# Own volume, so the directory is writable for Mautic: the ip_data mount
+# below makes the kubelet create /app/var/cache, as root, if it is only a
+# subdirectory of the var volume.
+- name: cache
+  mountPath: /app/var/cache
 # GeoIP database (Mautic keeps it next to the cache): persistent and shared,
 # so the monthly download reaches every pod and survives restarts.
 - name: data
