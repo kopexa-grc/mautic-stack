@@ -1,0 +1,155 @@
+{#
+  Kopexa · Hero + Split — part of the Kopexa email themes (see ../mautic-theme-kopexa).
+  Head (fonts, tokens), header and footer are identical to the base theme
+  "Kopexa"; qa/check.mjs enforces that. Fonts and logo are served from the
+  base theme (themes/kopexa/assets), which this package requires.
+  Hero on the dark surface (label, headline, lead, button), then a white
+  panel with an intro and two cards (image, label, heading, text, button)
+  that stack on mobile, then a full-width feature (large image, text,
+  button). Images are placeholders from the base theme: replace them in
+  the builder, or delete them; cards and feature work without images.
+  Delete the cards or the feature for a one- or two-column mail.
+  Builder rules: see the base theme (bare <mjml>, no self-closing tags,
+  an mj-class on every mj-section, mj-text and mj-button).
+#}
+<mjml>
+  <mj-head>
+    <mj-title>{subject}</mj-title>
+    <!-- Brand fonts inline (no external stylesheet: avoids spam-filter
+         penalties for external CSS; <link> is unsupported in most clients).
+         Clients without web fonts use the system fallbacks below. -->
+    <mj-style>
+      @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-style: normal; src: url('{{ getAssetUrl('themes/kopexa/assets/fonts/IBM-Plex-Sans-600.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; src: url('{{ getAssetUrl('themes/kopexa/assets/fonts/Inter-400.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; src: url('{{ getAssetUrl('themes/kopexa/assets/fonts/Inter-600.ttf', null, null, true) }}') format('truetype'); }
+      @font-face { font-family: 'Geist Mono'; font-weight: 400; font-style: normal; src: url('{{ getAssetUrl('themes/kopexa/assets/fonts/Geist-Mono-400.ttf', null, null, true) }}') format('truetype'); }
+    </mj-style>
+    <mj-raw>
+      <meta name="color-scheme" content="light only">
+      <meta name="supported-color-schemes" content="light only">
+    </mj-raw>
+    <mj-attributes>
+      <mj-all font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text color="#10253D" font-size="16px" line-height="26px" padding="0 32px 16px 32px"></mj-text>
+      <mj-button font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="16px" border-radius="8px" inner-padding="14px 24px" padding="8px 32px 24px 32px" align="left"></mj-button>
+      <mj-image padding="0"></mj-image>
+
+      <!-- Builder tokens (GrapesJS) -->
+      <mj-class name="t-body" font-size="16px" line-height="26px" color="#10253D"></mj-class>
+      <mj-class name="t-lead" font-size="19px" line-height="30px" color="#10253D"></mj-class>
+      <mj-class name="t-h1" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="32px" line-height="40px" color="#070B14"></mj-class>
+      <mj-class name="t-h2" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="26px" line-height="34px" color="#070B14"></mj-class>
+      <mj-class name="t-h3" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="21px" line-height="28px" color="#070B14"></mj-class>
+      <mj-class name="t-h4" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#070B14"></mj-class>
+      <mj-class name="t-label" font-family="'Geist Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12px" line-height="16px" letter-spacing="0.08em" color="#006CB8"></mj-class>
+      <mj-class name="t-btn" font-weight="600" border-radius="8px" inner-padding="14px 24px"></mj-class>
+      <mj-class name="t-btn-primary" background-color="#006CB8" color="#FFFFFF"></mj-class>
+      <mj-class name="t-btn-secondary" background-color="#FFFFFF" color="#006CB8" border="1px solid #006CB8"></mj-class>
+      <mj-class name="t-section" padding="0"></mj-class>
+      <mj-class name="t-surface-1" background-color="#FFFFFF"></mj-class>
+
+      <!-- Kopexa layout tokens (header, footer) -->
+      <mj-class name="k-navy" background-color="#070B14"></mj-class>
+      <mj-class name="k-claim" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="18px" line-height="26px" color="#FFFFFF"></mj-class>
+      <mj-class name="k-fine" font-size="13px" line-height="20px" color="#B9C8D7"></mj-class>
+      <mj-class name="k-note" font-size="14px" line-height="22px" color="#10253D"></mj-class>
+      <!-- Hero on the dark surface (theme "Kopexa · Hero + Split") -->
+      <mj-class name="k-hero" background-color="#101827"></mj-class>
+      <mj-class name="k-hero-label" font-family="'Geist Mono', ui-monospace, Menlo, Consolas, monospace" font-size="12px" line-height="16px" letter-spacing="0.08em" color="#B9C8D7"></mj-class>
+      <mj-class name="k-hero-h1" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="600" font-size="36px" line-height="44px" color="#FFFFFF"></mj-class>
+      <mj-class name="k-hero-lead" font-size="19px" line-height="30px" color="#B9C8D7"></mj-class>
+    </mj-attributes>
+    <mj-style>
+      a { color: #006CB8; }
+      .k-footer a { color: #B9C8D7 !important; text-decoration: underline; }
+      @media only screen and (max-width: 480px) {
+        .k-panel { border-radius: 0 !important; }
+        .k-hero-h1 div { font-size: 30px !important; line-height: 38px !important; }
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#070B14" width="640px">
+    <!-- Header: original logo (white) on Navy -->
+    <mj-section mj-class="k-navy" padding="32px 32px 24px 32px">
+      <mj-column>
+        <mj-image src="{{ getAssetUrl('themes/kopexa/assets/logo-light.png', null, null, true) }}" alt="Kopexa" width="140px" height="36px" align="left" href="https://www.kopexa.com/de"></mj-image>
+      </mj-column>
+    </mj-section>
+
+    <!-- Hero on the dark surface -->
+    <mj-wrapper mj-class="k-hero" css-class="k-panel" border-radius="14px" padding="48px 0 24px 0">
+      <mj-section mj-class="t-section k-hero">
+        <mj-column>
+          <mj-text mj-class="k-hero-label" padding="0 32px 16px 32px">WEBINAR · 30 MINUTEN</mj-text>
+          <mj-text mj-class="k-hero-h1" css-class="k-hero-h1" padding="0 32px 16px 32px"><h1 style="margin:0;font:inherit;color:inherit;">NIS2 ohne Umwege: was jetzt wirklich zu tun ist.</h1></mj-text>
+          <mj-text mj-class="k-hero-lead" padding="0 32px 24px 32px">Wir zeigen, wie dein Team Pflichten, Risiken und Nachweise an einem Ort steuert, und beantworten eure Fragen live.</mj-text>
+          <mj-button mj-class="t-btn t-btn-primary" href="https://www.kopexa.com/de">Platz sichern</mj-button>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Gap on Navy between hero and split -->
+    <mj-section mj-class="k-navy" padding="8px 0">
+      <mj-column>
+        <mj-spacer height="8px"></mj-spacer>
+      </mj-column>
+    </mj-section>
+
+    <!-- Split: intro, then two columns (stacked on mobile) -->
+    <mj-wrapper mj-class="t-surface-1" css-class="k-panel" border-radius="14px" padding="40px 0 16px 0">
+      <mj-section mj-class="t-section t-surface-1">
+        <mj-column>
+          <mj-text mj-class="t-h2" padding="0 32px 12px 32px"><h2 style="margin:0;font:inherit;color:inherit;">Was dich erwartet</h2></mj-text>
+          <mj-text mj-class="t-body" padding="0 32px 24px 32px">Hallo {contactfield=firstname|zusammen}, zwei Themen stehen im Mittelpunkt:</mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-section mj-class="t-section t-surface-1" padding="0 16px">
+        <mj-column>
+          <mj-image src="{{ getAssetUrl('themes/kopexa/assets/placeholder/card-1.png', null, null, true) }}" alt="Risiken priorisieren" width="272px" height="153px" border-radius="8px" padding="0 16px 16px 16px" href="https://www.kopexa.com/de"></mj-image>
+          <mj-text mj-class="t-label" padding="0 16px 8px 16px">01 · RISIKEN</mj-text>
+          <mj-text mj-class="t-h4" padding="0 16px 8px 16px"><h3 style="margin:0;font:inherit;color:inherit;">Prioritäten statt langer Listen</h3></mj-text>
+          <mj-text mj-class="t-body" padding="0 16px 16px 16px">Welche Risiken zuerst dran sind und wer den nächsten Schritt übernimmt.</mj-text>
+          <mj-button mj-class="t-btn t-btn-secondary" href="https://www.kopexa.com/de" padding="0 16px 24px 16px">Mehr erfahren</mj-button>
+        </mj-column>
+        <mj-column>
+          <mj-image src="{{ getAssetUrl('themes/kopexa/assets/placeholder/card-2.png', null, null, true) }}" alt="Nachweise sammeln" width="272px" height="153px" border-radius="8px" padding="0 16px 16px 16px" href="https://www.kopexa.com/de"></mj-image>
+          <mj-text mj-class="t-label" padding="0 16px 8px 16px">02 · NACHWEISE</mj-text>
+          <mj-text mj-class="t-h4" padding="0 16px 8px 16px"><h3 style="margin:0;font:inherit;color:inherit;">Audit-ready auf Knopfdruck</h3></mj-text>
+          <mj-text mj-class="t-body" padding="0 16px 16px 16px">Nachweise sammeln sich im Alltag, nicht erst in der Woche vor dem Audit.</mj-text>
+          <mj-button mj-class="t-btn t-btn-secondary" href="https://www.kopexa.com/de" padding="0 16px 24px 16px">Mehr erfahren</mj-button>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Gap on Navy between split and feature -->
+    <mj-section mj-class="k-navy" padding="8px 0">
+      <mj-column>
+        <mj-spacer height="8px"></mj-spacer>
+      </mj-column>
+    </mj-section>
+
+    <!-- Feature: one column, full-width image -->
+    <mj-wrapper mj-class="t-surface-1" css-class="k-panel" border-radius="14px" padding="32px 0 16px 0">
+      <mj-section mj-class="t-section t-surface-1">
+        <mj-column>
+          <mj-image src="{{ getAssetUrl('themes/kopexa/assets/placeholder/feature.png', null, null, true) }}" alt="Kopexa Plattform" width="576px" height="288px" border-radius="8px" padding="0 32px 24px 32px" href="https://www.kopexa.com/de"></mj-image>
+          <mj-text mj-class="t-label" padding="0 32px 8px 32px">IM FOKUS</mj-text>
+          <mj-text mj-class="t-h3" padding="0 32px 12px 32px"><h2 style="margin:0;font:inherit;color:inherit;">Ein Ort für Pflichten, Risiken und Nachweise</h2></mj-text>
+          <mj-text mj-class="t-body">Statt Tabellen und E-Mail-Ketten: Kopexa zeigt, was offen ist, wer dran ist und was schon belegt ist. So bleibt dein Team handlungsfähig, auch wenn das Audit näher rückt.</mj-text>
+          <mj-button mj-class="t-btn t-btn-primary" href="https://www.kopexa.com/de">Demo ansehen</mj-button>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Footer on Navy: claim, legal information, unsubscribe -->
+    <mj-section mj-class="k-navy" padding="32px 32px 8px 32px" css-class="k-footer">
+      <mj-column>
+        <mj-text mj-class="k-claim" padding="0 0 16px 0">Dein Weg zu mehr Sicherheit.</mj-text>
+        <mj-text mj-class="k-fine" padding="0 0 8px 0">Kopexa GmbH · Schauenburgerstraße 116 · 24118 Kiel</mj-text>
+        <mj-text mj-class="k-fine" padding="0 0 16px 0" css-class="k-footer"><a href="https://www.kopexa.com/de">kopexa.com</a> · <a href="https://kopexa.com/de/legal/imprint">Impressum</a> · <a href="https://kopexa.com/de/legal/privacy">Datenschutz</a></mj-text>
+        <mj-text mj-class="k-fine" padding="0 0 32px 0" css-class="k-footer">{unsubscribe_text} · {webview_text}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

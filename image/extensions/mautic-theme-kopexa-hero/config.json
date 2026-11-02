@@ -1,0 +1,15 @@
+{
+    "name": "Kopexa · Hero + Split",
+    "author": "Kopexa",
+    "authorUrl": "https://kopexa.com",
+    "builder": [
+        "grapesjsbuilder"
+    ],
+    "features": [
+        "email"
+    ],
+    "tags": [
+        "newsletter",
+        "announcement"
+    ]
+}

@@ -5,7 +5,8 @@
 | `kopexa/mautic-oauth-bundle` | [kopexa-grc/mautic-oauth-bundle](https://github.com/kopexa-grc/mautic-oauth-bundle) | [link](https://packagist.org/packages/kopexa/mautic-oauth-bundle) | OAuth 2.1 authorization server ([docs/oauth.md](oauth.md)) |
 | `kopexa/mautic-mcp-bundle` | [kopexa-grc/mautic-mcp-bundle](https://github.com/kopexa-grc/mautic-mcp-bundle) | [link](https://packagist.org/packages/kopexa/mautic-mcp-bundle) | MCP server for AI assistants ([docs/mcp.md](mcp.md)) |
 | `kopexa/mautic-postal-bundle` | [kopexa-grc/mautic-postal-bundle](https://github.com/kopexa-grc/mautic-postal-bundle) | [link](https://packagist.org/packages/kopexa/mautic-postal-bundle) | Postal bounce webhooks ([docs/postal.md](postal.md)) |
-| `kopexa/mautic-theme-kopexa` | this repository, [`image/extensions/mautic-theme-kopexa`](../image/extensions/mautic-theme-kopexa) | – | Kopexa email theme; internal, not published |
+| `kopexa/mautic-theme-kopexa` | this repository, [`image/extensions/mautic-theme-kopexa`](../image/extensions/mautic-theme-kopexa) | – | Kopexa email theme (with fonts, logo, placeholder images, QA tooling); internal, not published |
+| `kopexa/mautic-theme-kopexa-confirm`, `-hero` | this repository, `image/extensions/mautic-theme-kopexa-*` | – | variants of the theme (a Mautic theme holds one email template); use the base theme's assets |
 
 The three bundles live in their own repositories, with their history from
 this one. Each one has:

@@ -384,6 +384,18 @@ cron:
       enabled: false
       schedule: "11 3 1 * *"
       args: [mautic:iplookup:download]
+    # Double opt-in (Leuchtfeuer DOI plugin, built into the image): reminder
+    # emails, expiry of unconfirmed submissions, and deletion of expired
+    # ones for forms that enable it. No-ops while no form uses DOI.
+    doi-send-followup:
+      schedule: "17 * * * *"
+      args: [leuchtfeuer:doi:send-followup]
+    doi-update-timeout:
+      schedule: "27 * * * *"
+      args: [leuchtfeuer:doi:update-timeout]
+    doi-cleanup-submissions:
+      schedule: "37 3 * * *"
+      args: [leuchtfeuer:doi:cleanup-submissions]
     maintenance-cleanup:
       # Deletes old data — read the Mautic docs before enabling.
       enabled: false

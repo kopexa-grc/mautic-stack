@@ -13,6 +13,41 @@ is Kopexa's own design and is not published as a separate package.
 
 ![Preview](thumbnail.png)
 
+## Variants
+
+A Mautic theme holds exactly one email template, so further layouts are
+separate theme packages next to this one. They share head (fonts, tokens),
+header and footer with this theme (`qa/check.mjs` fails if they drift) and
+use its assets.
+
+| Theme | Package | Use |
+|---|---|---|
+| *Kopexa* | this one | standard mail: label, headline, text, button |
+| *Kopexa · Anmeldung bestätigen* | [`mautic-theme-kopexa-confirm`](../mautic-theme-kopexa-confirm) | double opt-in: button to `{doi_link}` of the Leuchtfeuer DOI plugin (see [docs/plugins.md](../../../docs/plugins.md#double-opt-in)) |
+| *Kopexa · Hero + Split* | [`mautic-theme-kopexa-hero`](../mautic-theme-kopexa-hero) | hero on the dark surface, two cards with images, one full-width feature; delete what you don't need |
+
+<img src="../mautic-theme-kopexa-confirm/thumbnail.png" width="49%" alt="Anmeldung bestätigen"> <img src="../mautic-theme-kopexa-hero/thumbnail.png" width="49%" alt="Hero + Split">
+
+The images in *Hero + Split* (`assets/placeholder/`) are abstract
+placeholders: replace them in the builder (*Image → Asset*) or delete them.
+Card images are 272 × 153 px, the feature image 576 × 288 px (upload at
+twice the size for sharp displays).
+
+## Builder rules
+
+Mautic's GrapesJS builder imposes rules a template must follow, or emails
+break after the first save:
+
+- the root is exactly `<mjml>` (no attributes), otherwise *No valid MJML provided*;
+- no self-closing tags (`<mj-image />`): the builder parses the template as HTML;
+- every `mj-section`, `mj-text` and `mj-button` has an `mj-class`. When an
+  email is reopened, the builder gives sections without one its default
+  token `t-section t-surface-1` (white: header and footer turned white,
+  logo and claim invisible) and drops inline attributes equal to MJML's
+  defaults (e.g. `font-size="13px"`). Styles therefore live in `mj-class`es.
+
+`qa/check.mjs` checks all of them.
+
 ## Design
 
 | Token | Value | Use |
@@ -52,10 +87,13 @@ Every change runs [`.github/workflows/theme.yml`](../../../.github/workflows/the
 | Spam score | rspamd via Mailpit | < 4 |
 | Desktop / mobile screenshots | Playwright | artifact |
 
-Run locally:
+Every check runs per theme (CI: one job per theme). Run locally:
 
 ```bash
-cd image/extensions/mautic-theme-kopexa/qa && npm ci && node render.mjs && node check.mjs && ./deliverability.sh
+cd image/extensions/mautic-theme-kopexa/qa && npm ci
+for t in .. ../../mautic-theme-kopexa-confirm ../../mautic-theme-kopexa-hero; do
+  node render.mjs $t && node check.mjs $t && ./deliverability.sh $t && node screenshots.mjs $t
+done
 ```
 
 Sending-side deliverability (SPF, DKIM, DMARC alignment of the Postal

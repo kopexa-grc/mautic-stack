@@ -158,6 +158,10 @@ echo "Kopexa email theme"
 [[ "$(code /themes/kopexa/thumbnail.png)" == 200 ]] && pass "theme thumbnail present" || fail "theme thumbnail missing"
 [[ "$(code /themes/kopexa/qa/package.json)" =~ ^(403|404)$ ]] && pass "theme QA tooling not shipped" || fail "theme QA files reachable"
 grep -q '^kopexa/mautic-theme-kopexa ' <<<"$(docker run --rm "$IMG" plugins)" && pass "theme installed via Composer" || fail "theme not installed"
+for v in kopexa-confirm kopexa-hero; do
+  [[ "$(code "/themes/$v/thumbnail.png")" == 200 ]] && pass "theme variant $v installed" || fail "theme variant $v missing"
+done
+[[ "$(code /themes/kopexa/assets/placeholder/card-1.png)" == 200 ]] && pass "placeholder images served" || fail "placeholder images missing"
 
 echo "Postal bounce webhook (kopexa/mautic-postal-bundle)"
 api() { curl -s -u 'admin:Sm0ke-Test-Passw0rd!' -H 'Accept: application/json' "$@"; }

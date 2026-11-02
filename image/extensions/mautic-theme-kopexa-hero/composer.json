@@ -1,0 +1,31 @@
+{
+    "name": "kopexa/mautic-theme-kopexa-hero",
+    "description": "Kopexa email theme for Mautic: Email with a hero on the dark surface and a two-column split.",
+    "type": "mautic-theme",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mautic",
+        "theme",
+        "mjml",
+        "email"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa-hero",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
+    "extra": {
+        "install-directory-name": "kopexa-hero"
+    },
+    "require": {
+        "mautic/core-lib": "^7.0",
+        "kopexa/mautic-theme-kopexa": "^0.2"
+    },
+    "minimum-stability": "stable"
+}

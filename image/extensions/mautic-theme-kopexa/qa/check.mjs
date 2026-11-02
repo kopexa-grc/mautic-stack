@@ -1,12 +1,18 @@
-// Static quality checks on the rendered email (dist/email.html) and the
-// template source. Exit code 1 on any failure.
+// Static quality checks on the rendered email (dist/<theme>/email.html) and
+// the template source. Exit code 1 on any failure.
+//   node check.mjs [theme-dir]
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import 'mjml';
+import { themeDir, themeName, dist, baseDir } from './theme.mjs';
 
 const here = new URL('.', import.meta.url).pathname;
-const html = readFileSync(`${here}dist/email.html`, 'utf8');
-const text = readFileSync(`${here}dist/email.txt`, 'utf8');
-const source = readFileSync(`${here}../html/email.mjml.twig`, 'utf8');
+const html = readFileSync(`${dist}/email.html`, 'utf8');
+const text = readFileSync(`${dist}/email.txt`, 'utf8');
+const source = readFileSync(`${themeDir}/html/email.mjml.twig`, 'utf8');
 const tokens = JSON.parse(readFileSync(`${here}tokens.json`, 'utf8'));
+const { components } = createRequire(import.meta.url)('mjml-core');
+console.log(`theme ${themeName}`);
 
 let failed = 0;
 const ok = (m) => console.log(`  \x1b[32mok\x1b[0m   ${m}`);
@@ -39,6 +45,30 @@ const mjmlSource = source.replace(/\{#[\s\S]*?#\}/g, '');
 /<mjml>/.test(mjmlSource) ? ok('root tag is exactly <mjml> (Mautic builder)') : fail('root must be exactly <mjml> without attributes, or the Mautic builder rejects the template');
 const selfClosing = mjmlSource.match(/<mj-[a-z-]+[^<>]*\/>/g) || [];
 selfClosing.length === 0 ? ok('no self-closing mj-* tags (builder parses HTML)') : fail(`self-closing tags break the builder's HTML parsing: ${selfClosing.slice(0, 3).join(' ')}`);
+// When an email is reopened, the builder gives mj-section / mj-text /
+// mj-button without an mj-class its default token (sections turn white) and
+// drops inline attributes equal to MJML's defaults.
+const mjBody = mjmlSource.slice(mjmlSource.indexOf('<mj-body'));
+const tags = [...mjBody.matchAll(/<(mj-section|mj-text|mj-button)\b([^>]*)>/g)];
+const untokenized = tags.filter(([, , a]) => !/\bmj-class="[^"]+"/.test(a)).map(([t]) => t);
+untokenized.length === 0 ? ok(`all ${tags.length} mj-section/mj-text/mj-button carry an mj-class (builder keeps them)`)
+  : fail(`without mj-class the builder restyles them on reopen: ${untokenized.slice(0, 3).join(' ')}`);
+const defaultAttrs = tags.flatMap(([t, name, a]) => [...a.matchAll(/([a-z-]+)="([^"]*)"/g)]
+  .filter(([, k, v]) => String(components[name].defaultAttributes?.[k] ?? '').toLowerCase() === v.toLowerCase())
+  .map(([kv]) => `<${name} ${kv}>`));
+defaultAttrs.length === 0 ? ok('no inline attributes equal to MJML defaults (the builder would drop them)')
+  : fail(`the builder drops attributes equal to MJML's defaults, move them to an mj-class: ${defaultAttrs.slice(0, 3).join(' ')}`);
+// Variants share head (fonts, tokens), header and footer with the base theme.
+if (themeDir !== baseDir) {
+  const strip = (t) => t.replace(/\{#[\s\S]*?#\}/g, '').replace(/'themes\/(?:'~template~'|kopexa)\/assets\//g, "'themes/kopexa/assets/");
+  const base = strip(readFileSync(`${baseDir}/html/email.mjml.twig`, 'utf8'));
+  const mine = strip(source);
+  const part = (t, from, to) => { const i = t.indexOf(from); return i < 0 ? "" : t.slice(i, t.indexOf(to, i + from.length)); };
+  for (const [name, from, to] of [['head', '<mjml>', '<mj-body'], ['header', '<!-- Header', '<!--'], ['footer', '<!-- Footer', '</mj-body>']]) {
+    part(mine, from, to) && part(mine, from, to) === part(base, from, to) ? ok(`${name} identical to the base theme`) : fail(`${name} differs from the base theme (copy it from mautic-theme-kopexa)`);
+  }
+  /'themes\/'~template~'/.test(source) ? fail("variants have no assets of their own: use 'themes/kopexa/assets/...'") : ok('assets from the base theme');
+}
 /\{unsubscribe_text\}|\{unsubscribe_url\}/.test(source) ? ok('unsubscribe token present') : fail('no {unsubscribe_text} / {unsubscribe_url} in template');
 /\{webview_text\}|\{webview_url\}/.test(source) ? ok('web view token present') : warn('no web view link');
 // Mautic's builder only accepts a bare <mjml> root, so MJML writes lang="und".
@@ -67,6 +97,8 @@ const pairs = [
   ['body text', '#10253D', '#FFFFFF'], ['headings', '#070B14', '#FFFFFF'],
   ['primary button', '#FFFFFF', tokens.color.action], ['secondary button / links', tokens.color.action, '#FFFFFF'],
   ['footer text', tokens.color.supporting, tokens.color.navy], ['footer claim', '#FFFFFF', tokens.color.navy],
+  ['hero headline', '#FFFFFF', tokens.color.surface], ['hero lead / label', tokens.color.supporting, tokens.color.surface],
+  ['primary button on hero', '#FFFFFF', tokens.color.action],
 ];
 for (const [name, fg, bg] of pairs) {
   const r = ratio(fg, bg);

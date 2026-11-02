@@ -1,0 +1,15 @@
+{
+    "name": "Kopexa · Anmeldung bestätigen",
+    "author": "Kopexa",
+    "authorUrl": "https://kopexa.com",
+    "builder": [
+        "grapesjsbuilder"
+    ],
+    "features": [
+        "email"
+    ],
+    "tags": [
+        "transactional",
+        "double-opt-in"
+    ]
+}

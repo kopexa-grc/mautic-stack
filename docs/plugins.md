@@ -16,8 +16,27 @@ months, and a clear need for our use cases.
 | [kopexa/mautic-postal-bundle](https://github.com/kopexa-grc/mautic-postal-bundle) (ours) | **Postal bounces:** signed `MessageBounced` / hard `MessageDeliveryFailed` webhooks mark the contact *Do Not Contact – bounced* | `mautic.postal.jwksUrl`; in Postal add a webhook to `https://<mautic>/mailer/callback` — see [docs/postal.md](postal.md) |
 | [kopexa/mautic-mcp-bundle](https://github.com/kopexa-grc/mautic-mcp-bundle) (ours) | **MCP server** for Claude, ChatGPT and other AI assistants: read contacts, segments, emails, campaigns, statistics; create unpublished emails and campaigns, edit campaign flows (live for running campaigns), with the user's Mautic permissions; never publishes or sends directly | `mautic.oauth.enabled: true`, then add `https://<mautic>/mcp` as a connector — see [docs/mcp.md](mcp.md) |
 | [kopexa/mautic-oauth-bundle](https://github.com/kopexa-grc/mautic-oauth-bundle) (ours) | **OAuth 2.1 authorization server** for MCP clients (Claude, ChatGPT): authorization code + PKCE S256, dynamic client registration, JWT access tokens, consent behind Mautic's login | `mautic.oauth.enabled: true` — see [docs/oauth.md](oauth.md) |
-| [kopexa/mautic-theme-kopexa](../image/extensions/mautic-theme-kopexa) (ours) | **Kopexa email theme** (MJML, GrapesJS builder) from brand.kopexa.com tokens, with an automated quality gate (size, links, contrast, client compatibility, spam score) | pick theme *Kopexa* when creating an email |
+| [kopexa/mautic-theme-kopexa](../image/extensions/mautic-theme-kopexa) (ours) | **Kopexa email themes** (MJML, GrapesJS builder) from brand.kopexa.com tokens: *Kopexa* (standard mail), *Kopexa · Anmeldung bestätigen* (double opt-in), *Kopexa · Hero + Split* (hero, two cards, feature); automated quality gate (size, links, contrast, client compatibility, spam score, builder rules) | pick the theme when creating an email |
 | `symfony/{amazon,postmark,brevo,mailgun,sendgrid,mailjet}-mailer` | Official Symfony Mailer bridges: send through provider HTTP APIs instead of SMTP | `mautic.mailer.dsn`, e.g. `ses+api://KEY:SECRET@default?region=eu-central-1`, `postmark+api://TOKEN@default` |
+
+Mautic's own plugins from `mautic/recommended-project` are part of the
+image as well, among them the **GrapesJS builder**, **Focus** (popups,
+bars), **Tag Manager**, **Cloud Storage** (Amazon S3 and S3-compatible
+storage such as OVH, for assets) and the CRM, Zapier, Gmail and Outlook
+integrations. They appear under *Settings → Plugins*; nothing to install.
+
+### Double opt-in
+
+1. *Settings → Plugins → Double Opt-In*: enable it, set the link timeout.
+2. Create an email with the theme *Kopexa · Anmeldung bestätigen* (type
+   *template*). Its button links to `{doi_link}`, which the plugin fills in.
+3. In the form, tab *Email Verification*: enable DOI, select that email,
+   optionally a thank-you and an error page. Move the actions that should
+   only run after the confirmation (add to segment, etc.) to the
+   post-verification actions.
+
+The chart runs the plugin's jobs (`cron.jobs.doi-*`: follow-up mails,
+timeouts, cleanup); they do nothing as long as no form uses DOI.
 
 Our default is **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
 server; the bridges are there to switch to a provider API without

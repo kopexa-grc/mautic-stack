@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Deliverability checks for the rendered email (dist/email.html + .txt):
+# Deliverability checks for the rendered email (dist/<theme>/email.html + .txt):
 # send it as a real multipart message to Mailpit with rspamd attached, then
 # use Mailpit's checks:
 #   - HTML compatibility across email clients (caniemail data)
 #   - link check (all external links reachable)
 #   - rspamd spam score
 #
-#   qa/deliverability.sh            (needs docker, python3, curl, jq)
+#   qa/deliverability.sh [theme-dir]   (needs docker, python3, curl, jq; default: the base theme)
 set -euo pipefail
 cd "$(dirname "$0")"
+theme_dir="${1:-..}"
+dist="dist/$(jq -r '.extra["install-directory-name"]' "$theme_dir/composer.json")"
 MAILPIT_IMAGE="${MAILPIT_IMAGE:-axllent/mailpit:v1.33.0}"
 RSPAMD_IMAGE="${RSPAMD_IMAGE:-rspamd/rspamd:latest}"
 MIN_CLIENT_SUPPORT="${MIN_CLIENT_SUPPORT:-80}"   # % of HTML/CSS features supported
@@ -30,20 +32,20 @@ api="http://127.0.0.1:$(docker port "$net-mailpit" 8025/tcp | head -1 | sed 's/.
 for _ in $(seq 1 60); do curl -fs "$api/info" >/dev/null 2>&1 && break; sleep 1; done
 
 # A message as Mautic + Postal would send it (headers incl. RFC 8058 one-click unsubscribe).
-python3 - "$smtp" <<'PY'
+python3 - "$smtp" "$dist" <<'PY'
 import smtplib, sys
 from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 msg = EmailMessage()
 msg["From"] = "Kopexa <newsletter@kopexa.com>"
 msg["To"] = "Alex <alex@example.org>"
-msg["Subject"] = "Bring die wichtigen Maßnahmen ins Ziel"
+msg["Subject"] = open(sys.argv[2] + "/subject.txt", encoding="utf-8").read().strip()
 msg["Date"] = formatdate(localtime=True)
 msg["Message-ID"] = make_msgid(domain="kopexa.com")
 msg["List-Unsubscribe"] = "<https://mautic.example.com/email/unsubscribe/0123456789abcdef>"
 msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
-msg.set_content(open("dist/email.txt", encoding="utf-8").read())
-msg.add_alternative(open("dist/email.html", encoding="utf-8").read(), subtype="html")
+msg.set_content(open(sys.argv[2] + "/email.txt", encoding="utf-8").read())
+msg.add_alternative(open(sys.argv[2] + "/email.html", encoding="utf-8").read(), subtype="html")
 with smtplib.SMTP("127.0.0.1", int(sys.argv[1])) as s:
     s.send_message(msg)
 PY
@@ -75,6 +77,6 @@ score="$(jq -r '.Score' <<<"$rs")"; action="$(jq -r '.Action' <<<"$rs")"
 if awk "BEGIN{exit !($score < $MAX_SPAM_SCORE)}"; then pass "rspamd score $score (< $MAX_SPAM_SCORE), action: $action"; else fail "rspamd score $score >= $MAX_SPAM_SCORE (action: $action)"; fi
 jq -r '.Rules | sort_by(-.Score) | .[] | select(.Score != 0) | "       \(.Score)\t\(.Name)\t\(.Description)"' <<<"$rs" | head -10
 
-mkdir -p dist
-printf '%s\n' "$hc" > dist/html-check.json; printf '%s\n' "$lc" > dist/link-check.json; printf '%s\n' "$rs" > dist/rspamd.json
+mkdir -p "$dist"
+printf '%s\n' "$hc" > "$dist/html-check.json"; printf '%s\n' "$lc" > "$dist/link-check.json"; printf '%s\n' "$rs" > "$dist/rspamd.json"
 exit "$failed"

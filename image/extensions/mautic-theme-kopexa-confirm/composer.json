@@ -1,0 +1,31 @@
+{
+    "name": "kopexa/mautic-theme-kopexa-confirm",
+    "description": "Kopexa email theme for Mautic: Double-opt-in confirmation email.",
+    "type": "mautic-theme",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mautic",
+        "theme",
+        "mjml",
+        "email"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa-confirm",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
+    "extra": {
+        "install-directory-name": "kopexa-confirm"
+    },
+    "require": {
+        "mautic/core-lib": "^7.0",
+        "kopexa/mautic-theme-kopexa": "^0.2"
+    },
+    "minimum-stability": "stable"
+}
