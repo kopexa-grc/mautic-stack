@@ -182,7 +182,15 @@ cosign verify ghcr.io/kopexa-grc/mautic:7 \
 
 ## Differences from the official Mautic image
 
-- Mautic **7** (the official image currently publishes 5.x and 6.x only).
+Both ship Mautic 7 (the official [`mautic/mautic`](https://hub.docker.com/r/mautic/mautic)
+image has `7.x-apache` and `7.x-fpm` tags); this image follows the same
+releases, updated by Renovate. The differences:
+
+- Built-in extensions: OAuth 2.1 + MCP server for AI assistants, Postal
+  bounces, Kopexa email themes, double opt-in, mailer API bridges (see
+  [docs/plugins.md](docs/plugins.md)).
+- Valkey for cache and shared sessions, and a Helm chart with web, worker,
+  cron jobs, backups and network policies.
 - Hardened base: no shell/package manager, non-root, read-only rootfs,
   setuid-free, CIS-aligned Apache config, uploads cannot execute PHP.
 - Configuration via environment and `*_FILE` secrets; automatic install.
