@@ -37,6 +37,36 @@ throughput. For high volume use a dedicated broker (e.g.
   migrations before the new version serves traffic.
 - **Take a backup before minor/major upgrades.**
 
+## Behind a CDN (Cloudflare & co.)
+
+Mautic evaluates the proxy headers (`X-Forwarded-Proto`, `-For`, `-Port`)
+once, against `mautic.trustedProxies`. The private-network default is right
+when the CDN talks to your ingress or gateway and that talks to Mautic: the
+pod's direct peer is the ingress, so https is detected and there is no
+redirect loop.
+
+Visitor IPs, used for tracking and geolocation, are the rightmost address in
+`X-Forwarded-For` that is not a trusted proxy. Behind a CDN that address is
+the CDN edge. To record the real visitor, add the CDN's ranges, e.g.
+[Cloudflare's](https://www.cloudflare.com/ips/):
+
+```yaml
+mautic:
+  trustedProxies:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 100.64.0.0/10
+    # Cloudflare (https://www.cloudflare.com/ips-v4 and ips-v6)
+    - 173.245.48.0/20
+    - 103.21.244.0/22
+    # …
+```
+
+Only do this when all traffic really comes through the CDN, i.e. the origin
+is not reachable directly (firewall, Cloudflare Tunnel or authenticated
+origin pulls). Otherwise clients can claim any IP.
+
 ## Resources and scheduling
 
 Every component has its own `resources` with conservative defaults (web,

@@ -18,7 +18,7 @@ dump() {
   echo "--- db logs";   docker logs "$run_id-db" 2>&1 | tail -10 || true
 }
 cleanup() {
-  docker rm -f "$run_id-db" "$run_id-web" "$run_id-web2" >/dev/null 2>&1 || true
+  docker rm -f "$run_id-db" "$run_id-web" "$run_id-web2" "$run_id-tls" >/dev/null 2>&1 || true
   docker volume rm -f "$run_id-config" "$run_id-media" >/dev/null 2>&1 || true
   docker network rm "$net" >/dev/null 2>&1 || true
 }
@@ -85,6 +85,20 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$base$1"; }
 login="$(curl -s -L "$base/s/login")"
 grep -q 'name="_username"' <<<"$login" && pass "login page renders" || fail "login page"
 [[ "$(code /healthz)" == 200 ]] && pass "/healthz" || fail "/healthz"
+# Behind Cloudflare (or any public hop) X-Forwarded-For carries public IPs.
+# A replica with an https site URL, reached through a trusted proxy that says
+# https, must answer instead of redirecting to itself (301 loop).
+docker run -d --name "$run_id-tls" --network "$net" "${hardening[@]}" "${env[@]}" \
+  -e MAUTIC_SITE_URL=https://mautic.example.com -p 127.0.0.1::8080 "$IMG" web >/dev/null
+tls="http://127.0.0.1:$(docker port "$run_id-tls" 8080/tcp | head -1 | sed 's/.*://')"
+for _ in $(seq 1 60); do curl -fs "$tls/healthz" >/dev/null && break; sleep 1; done
+for xff in 10.1.1.1 173.245.48.1 '1.2.3.4, 173.245.48.1'; do
+  got="$(curl -s -o /dev/null -w '%{http_code} %header{location}' -H 'Host: mautic.example.com' \
+    -H 'X-Forwarded-Proto: https' -H "X-Forwarded-For: $xff" "$tls/s/login")"
+  [[ "$got" == "200 " ]] || { docker rm -f "$run_id-tls" >/dev/null; fail "https site behind proxy, X-Forwarded-For '$xff': $got"; }
+done
+docker rm -f "$run_id-tls" >/dev/null
+pass "https site behind a proxy: no redirect loop with public IPs in X-Forwarded-For (Cloudflare)"
 [[ "$(code /mtc.js)" == 200 ]] && pass "tracking script /mtc.js" || fail "/mtc.js"
 [[ "$(code /mtracking.gif)" == 200 ]] && pass "tracking pixel" || fail "/mtracking.gif"
 [[ "$(code /composer.json)" =~ ^(403|404)$ ]] && pass "composer.json not served" || fail "composer.json served"

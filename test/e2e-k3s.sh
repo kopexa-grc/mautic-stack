@@ -104,6 +104,10 @@ loc="$(https -o /dev/null -w '%{redirect_url}' "https://$HOST/s/dashboard")"
 echo "  redirect: $loc"
 [[ "$loc" == "https://$HOST/"* ]] && pass "redirects stay on https (X-Forwarded-Proto trusted)" \
   || fail "redirect is not https://$HOST/… — trusted proxies not applied"
+# Cloudflare & co. put public IPs into X-Forwarded-For; the ingress appends.
+code="$(https -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 1.2.3.4, 173.245.48.1' "https://$HOST/s/login")"
+[[ "$code" == 200 ]] && pass "no redirect loop with public IPs in X-Forwarded-For (CDN in front)" \
+  || fail "login via ingress with public X-Forwarded-For: HTTP $code"
 
 step "OAuth 2.1 + MCP discovery through the ingress"
 meta="$(https "https://$HOST/.well-known/oauth-authorization-server")"
