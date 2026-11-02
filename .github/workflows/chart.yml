@@ -56,6 +56,13 @@ jobs:
           yq -o=json "$CHART/values.yaml" | python3 "$CHART/hack/gen-schema.py" > /tmp/schema.json
           diff -u "$CHART/values.schema.json" /tmp/schema.json \
             || { echo "::error::run: yq -o=json values.yaml | python3 hack/gen-schema.py > values.schema.json"; exit 1; }
+      - name: Checksum annotations are quoted
+        # A truncated hex hash can look like a number (e.g. 1234e5678...);
+        # unquoted, YAML parses it as one and the API rejects the object.
+        run: |
+          if grep -rnE 'sha256sum[^}]*\}\}' "$CHART/templates" | grep -v '| quote }}'; then
+            echo "::error::quote checksum annotations: ... | sha256sum | trunc 16 | quote"; exit 1
+          fi
       - name: README.md is up to date (helm-docs)
         run: |
           docker run --rm -u "$(id -u)" -v "$PWD/$CHART:/helm-docs" "$HELM_DOCS_IMAGE" \

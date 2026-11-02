@@ -65,7 +65,7 @@ spec:
         {{- include "mautic.componentLabels" (dict "ctx" . "component" "mariadb") | nindent 8 }}
         {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.mariadb) | nindent 8 }}
       annotations:
-        checksum/config: {{ .Values.mariadb.config | sha256sum | trunc 16 }}
+        checksum/config: {{ .Values.mariadb.config | sha256sum | trunc 16 | quote }}
         {{- include "mautic.podAnnotations" (dict "ctx" . "c" .Values.mariadb) | nindent 8 }}
     spec:
       automountServiceAccountToken: false

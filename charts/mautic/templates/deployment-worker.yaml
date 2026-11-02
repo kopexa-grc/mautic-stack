@@ -18,7 +18,7 @@ spec:
         {{- include "mautic.componentLabels" (dict "ctx" . "component" "worker") | nindent 8 }}
         {{- include "mautic.podLabels" (dict "ctx" . "c" .Values.worker) | nindent 8 }}
       annotations:
-        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | trunc 16 | quote }}
         {{- include "mautic.podAnnotations" (dict "ctx" . "c" .Values.worker) | nindent 8 }}
     spec:
       serviceAccountName: {{ include "mautic.serviceAccountName" . }}
