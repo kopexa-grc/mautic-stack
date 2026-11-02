@@ -3,7 +3,7 @@ name: mautic
 description: Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), optional MariaDB and restic backups.
 type: application
 # Patch releases are cut automatically by CI whenever the chart changes.
-version: 0.3.3
+version: 0.3.4
 # renovate: datasource=packagist depName=mautic/recommended-project
 appVersion: "7.2.2"
 kubeVersion: ">=1.29.0-0"
