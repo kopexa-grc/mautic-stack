@@ -343,8 +343,8 @@ jq -e '.result.serverInfo.name == "Mautic"' <<<"$init" >/dev/null && [[ -n "$MCP
   && pass "initialize (session stored in the database)" || { echo "$init"; cat /tmp/mcp-headers; fail "MCP initialize"; }
 mcp "$access" '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
 tools="$(mcp "$access" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')"
-[[ "$(jq '.result.tools | length' <<<"$tools")" == 36 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts") and index("upsert_contacts")' <<<"$tools" >/dev/null \
-  && pass "tools/list: 36 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
+[[ "$(jq '.result.tools | length' <<<"$tools")" == 50 ]] && jq -e '[.result.tools[].name] | index("create_email_draft") and index("search_contacts") and index("upsert_contacts") and index("adjust_contact_points")' <<<"$tools" >/dev/null \
+  && pass "tools/list: 50 tools" || { echo "$tools" | head -c 600; fail "tools/list"; }
 call() { mcp "$1" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"'"$2"'","arguments":'"$3"'}}'; }
 result() { jq -r '.result.content[0].text // empty' <<<"$1"; }
 found="$(call "$access" search_contacts '{"search":"bounce@example.com"}')"
@@ -480,6 +480,8 @@ source "$(dirname "$0")/mcp-scenarios.sh"
 source "$(dirname "$0")/mcp-contacts.sh"
 # shellcheck source=test/mcp-crm.sh
 source "$(dirname "$0")/mcp-crm.sh"
+# shellcheck source=test/mcp-points.sh
+source "$(dirname "$0")/mcp-points.sh"
 # shellcheck source=test/roles.sh
 source "$(dirname "$0")/roles.sh"
 
