@@ -1,20 +1,61 @@
 # Postal: sending and bounce handling
 
-Mautic sends through our [Postal](https://docs.postalserver.io) server via
-SMTP. Postal reports bounces and delivery failures back to Mautic via
+Mautic sends through our [Postal](https://docs.postalserver.io) server, via
+Postal's HTTP API (recommended) or SMTP. Postal reports bounces and delivery failures back to Mautic via
 webhooks, handled by
 [`kopexa/mautic-postal-bundle`](https://github.com/kopexa-grc/mautic-postal-bundle).
 Without that, Mautic keeps mailing dead addresses and the sender reputation
 suffers.
 
 ```
-Mautic ──SMTP──▶ Postal ──▶ recipient MX
+Mautic ──HTTPS API / SMTP──▶ Postal ──▶ recipient MX
   ▲                 │
   │  POST /mailer/callback  (signed webhook: MessageBounced,
   └─────────────────┘                     MessageDeliveryFailed)
 ```
 
-## 1. Sending (SMTP)
+## 1. Sending
+
+### Via Postal's HTTP API (recommended)
+
+The bundle brings a mailer transport for Postal's API
+(`/api/v1/send/raw`). Mautic hands over the finished message, so every
+header (List-Unsubscribe, tracking) arrives unchanged, and bounces come back
+through the webhook below as with SMTP. Compared to SMTP:
+
+- HTTPS on 443 only: no SMTP port in the egress rules, no STARTTLS quirks;
+- an API credential per Postal server, rejected requests are reported with
+  Postal's error code (`InvalidServerAPIKey`, `UnauthenticatedFromAddress`);
+- Postal's message ID is stored with the sent message.
+
+Create an API credential in Postal (*Server → Credentials → API*) and store
+the DSN as a Secret:
+
+```bash
+kubectl -n mautic create secret generic mautic-mailer \
+  --from-literal=mailer-dsn='postal+api://API_KEY@postal.example.com'
+```
+
+```yaml
+mautic:
+  mailer:
+    existingSecret: mautic-mailer
+    fromEmail: newsletter@kopexa.com
+    fromName: Kopexa
+```
+
+| DSN | |
+|---|---|
+| `postal+api://KEY@postal.example.com` | HTTPS on 443 |
+| `postal+api://KEY@postal.example.com:8443` | HTTPS on another port |
+| `postal+api://KEY@postal-web.postal:5000?tls=false` | plain HTTP, e.g. to Postal's web service inside the cluster |
+
+The sender address (`fromEmail`) must belong to a domain that is verified on
+that Postal server, otherwise Postal answers `UnauthenticatedFromAddress`.
+With `networkPolicy.egress`, allow Mautic to reach the Postal host on 443
+(the same rule the webhook key from the JWKS needs).
+
+### Via SMTP
 
 Create an SMTP credential for the mail server in Postal (*Server →
 Credentials → SMTP*) and store the DSN as a Secret:

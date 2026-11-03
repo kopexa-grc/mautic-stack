@@ -103,7 +103,8 @@ mautic:
     authFrom: {}
 
   mailer:
-    # -- Symfony Mailer DSN, e.g. smtp://user:pass@smtp.example.com:587
+    # -- Symfony Mailer DSN, e.g. postal+api://API_KEY@postal.example.com
+    # (Postal's HTTP API, see docs/postal.md) or smtp://user:pass@smtp.example.com:587.
     # Prefer existingSecret, since a DSN usually contains credentials.
     dsn: ""
     # -- Secret holding the mailer DSN (preferred over `dsn`).
