@@ -3,13 +3,13 @@
 # publishes it, set_contact_stage moves a contact into it and the dry run
 # names the dynamic segment that filters on the stage. Projects group items.
 # Sourced by test/smoke.sh after test/mcp-points.sh (uses call, result, api,
-# pass, fail, base, contacts_token, read_token, lead, tid).
+# pass, fail, base, access, contacts_token, read_token, run_id, lead, tid).
 
 echo "MCP stages and projects"
-st="$(result "$(call "$contacts_token" create_stage '{"name":"SQL","weight":30,"description":"Sales-qualified"}')")"
+st="$(result "$(call "$access" create_stage '{"name":"SQL","weight":30,"description":"Sales-qualified"}')")"
 stid="$(jq -r .id <<<"$st")"
-dup="$(result "$(call "$contacts_token" create_stage '{"name":"SQL"}')")"
-dupw="$(result "$(call "$contacts_token" create_stage '{"name":"Other","weight":30}')")"
+dup="$(result "$(call "$access" create_stage '{"name":"SQL"}')")"
+dupw="$(result "$(call "$access" create_stage '{"name":"Other","weight":30}')")"
 early="$(result "$(call "$contacts_token" set_contact_stage "{\"contactId\":$lead,\"stage\":\"SQL\"}")")"
 jq -e '.published == false and .weight == 30' <<<"$st" >/dev/null && grep -q 'already exists' <<<"$dup" && grep -q 'already has weight 30' <<<"$dupw" && grep -q 'not published' <<<"$early" \
   && pass "create_stage: unpublished, unique name and weight; contacts only move into published stages" || { echo "$st $dup $early" | head -c 1000; fail "create_stage"; }
@@ -28,15 +28,15 @@ moved="$(result "$(call "$contacts_token" set_contact_stage "{\"contactId\":$lea
   && [[ "$(result "$(call "$read_token" list_stages '{}')" | jq --argjson s "$stid" '[.stages[] | select(.id == $s) | .contacts][0]')" == 1 ]] \
   && pass "set_contact_stage moves the contact; list_stages counts it" || { echo "$moved" | head -c 600; fail "set_contact_stage"; }
 
-pr="$(result "$(call "$contacts_token" create_project '{"name":"Lead scoring","description":"Smoke"}')")"
+pr="$(result "$(call "$access" create_project '{"name":"Lead scoring","description":"Smoke"}')")"
 prid="$(jq -r .id <<<"$pr")"
-add="$(result "$(call "$contacts_token" add_to_project "{\"projectId\":$prid,\"type\":\"stage\",\"ids\":[$stid]}")")"
-add2="$(result "$(call "$contacts_token" add_to_project "{\"projectId\":$prid,\"type\":\"pointtrigger\",\"ids\":[$tid,999999]}")")"
+add="$(result "$(call "$access" add_to_project "{\"projectId\":$prid,\"type\":\"stage\",\"ids\":[$stid]}")")"
+add2="$(result "$(call "$access" add_to_project "{\"projectId\":$prid,\"type\":\"pointtrigger\",\"ids\":[$tid,999999]}")")"
 got="$(result "$(call "$read_token" get_project "{\"id\":$prid}")")"
 jq -e '(.added | length) == 1' <<<"$add" >/dev/null && jq -e '(.added | length) == 1 and .skipped[0].reason == "not found"' <<<"$add2" >/dev/null \
   && jq -e --argjson s "$stid" --argjson t "$tid" '.items.stage[0].id == $s and .items.pointtrigger[0].id == $t' <<<"$got" >/dev/null \
   && pass "projects: create, add stage and point trigger, get_project lists them" || { echo "$add $add2 $got" | head -c 1200; fail "projects"; }
-rm_="$(result "$(call "$contacts_token" remove_from_project "{\"projectId\":$prid,\"type\":\"stage\",\"ids\":[$stid]}")")"
-bad="$(result "$(call "$contacts_token" add_to_project "{\"projectId\":$prid,\"type\":\"contact\",\"ids\":[$lead]}")")"
+rm_="$(result "$(call "$access" remove_from_project "{\"projectId\":$prid,\"type\":\"stage\",\"ids\":[$stid]}")")"
+bad="$(result "$(call "$access" add_to_project "{\"projectId\":$prid,\"type\":\"contact\",\"ids\":[$lead]}")")"
 [[ "$(result "$(call "$read_token" list_projects '{}')" | jq --argjson p "$prid" '[.projects[] | select(.id == $p) | .items.stage // 0][0]')" == 0 ]] && grep -q 'Unknown item type "contact"' <<<"$bad" \
   && pass "remove_from_project; unknown item types refused" || { echo "$rm_ $bad" | head -c 800; fail "remove_from_project"; }
