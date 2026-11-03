@@ -138,8 +138,15 @@ saml_role() { kubectl -n "$NS" exec deploy/mautic -c web -- /usr/bin/php -r '
 [[ "$(saml_role)" == "$rid" ]] && pass "saml_idp_default_role of the web pod = ID of Marketing" || fail "SAML default role: $(saml_role) (expected $rid)"
 kubectl -n "$NS" rollout restart deploy/mautic >/dev/null
 kubectl -n "$NS" rollout status deploy/mautic --timeout=10m >/dev/null
+# The old pod may still answer (or the ingress return an error page) right
+# after the rollout: wait until the API answers with the roles again.
+rid_after=""
+for _ in $(seq 1 30); do
+  rid_after="$(api "https://$HOST/api/roles?search=Marketing" | jq -r '[.roles[]? | select(.name == "Marketing")][0].id // empty' 2>/dev/null || true)"
+  [[ -n "$rid_after" ]] && break; sleep 5
+done
 grep -q 'role "Marketing": unchanged' <<<"$(kubectl -n "$NS" logs deploy/mautic -c init)" \
-  && [[ "$(api "https://$HOST/api/roles?search=Marketing" | jq -r '[.roles[] | select(.name == "Marketing")][0].id')" == "$rid" ]] \
+  && [[ "$rid_after" == "$rid" ]] \
   && [[ "$(saml_role)" == "$rid" ]] \
   && pass "restart: role unchanged, same ID, same SAML default role" || { kubectl -n "$NS" logs deploy/mautic -c init | tail -5; fail "restart changed roles"; }
 
