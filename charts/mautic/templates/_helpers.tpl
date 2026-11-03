@@ -379,11 +379,28 @@ affinity:
   value: {{ $name | quote }}
 {{- end }}
 {{- end }}
+{{- if and .defaultRole .defaultRoleId }}
+{{- fail "mautic.saml: set either defaultRole (by name) or defaultRoleId, not both" }}
+{{- end }}
+{{- with .defaultRole }}
+- name: MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME
+  value: {{ . | quote }}
+{{- end }}
 {{- with .defaultRoleId }}
 - name: MAUTIC_SAML_IDP_DEFAULT_ROLE
   value: {{ . | toString | quote }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- with .Values.mautic.roles }}
+{{- $names := dict }}
+{{- range . }}
+{{- if not .name }}{{ fail "mautic.roles: every role needs a name" }}{{ end }}
+{{- if hasKey $names (lower .name) }}{{ fail (printf "mautic.roles: role %q is declared twice" .name) }}{{ end }}
+{{- $_ := set $names (lower .name) true }}
+{{- end }}
+- name: MAUTIC_ROLES
+  value: {{ toJson . | quote }}
 {{- end }}
 {{- with .Values.mautic.postal.jwksUrl }}
 - name: MAUTIC_POSTAL_JWKS_URL

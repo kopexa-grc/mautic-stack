@@ -230,6 +230,45 @@ function isInstalled(PDO $pdo, array $params): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function roleIdByName(PDO $pdo, array $params, string $name): ?int
+{
+    $stmt = $pdo->prepare(sprintf('SELECT id FROM `%sroles` WHERE name = ?', $params['db_table_prefix'] ?? ''));
+    $stmt->execute([$name]);
+    $id = $stmt->fetchColumn();
+
+    return false === $id ? null : (int) $id;
+}
+
+/**
+ * MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME: Mautic stores the SAML default role as
+ * an ID; web, worker and cron build their configuration from the
+ * environment at start, so each resolves the name here. If the role is
+ * missing, SSO starts without a default role (logged) instead of failing
+ * the service; the init container fails in that case.
+ */
+function resolveSamlDefaultRole(array &$params): void
+{
+    $name = env('MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME');
+    if (null === $name) {
+        return;
+    }
+    try {
+        $id = roleIdByName(db($params), $params, $name);
+    } catch (Throwable $e) {
+        logmsg(sprintf('WARNING: cannot look up SAML default role "%s" (%s); SSO starts without a default role', $name, $e->getMessage()));
+        unset($params['saml_idp_default_role']);
+
+        return;
+    }
+    if (null === $id) {
+        logmsg(sprintf('WARNING: SAML default role "%s" does not exist; SSO starts without a default role', $name));
+        unset($params['saml_idp_default_role']);
+
+        return;
+    }
+    $params['saml_idp_default_role'] = (string) $id;
+}
+
 /** Run a console command as a child process, streaming its output. */
 function console(array $args, array $environment): int
 {
@@ -368,6 +407,22 @@ function init(array $params, array $environment): void
     if (0 !== $rc = console(['mautic:plugins:reload'], $environment)) {
         fail('plugin reload failed', $rc);
     }
+
+    // Roles from the Helm values (mautic.roles), matched by name.
+    $roles = trim((string) env('MAUTIC_ROLES', ''));
+    if ('' !== $roles && '[]' !== $roles) {
+        logmsg('syncing roles');
+        if (0 !== $rc = console(['kopexa:roles:sync'], $environment)) {
+            fail('role sync failed', $rc);
+        }
+    }
+
+    // The SAML default role by name must exist now (declared in mautic.roles
+    // or created in Mautic): fail the init rather than start SSO without it.
+    $name = env('MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME');
+    if (null !== $name && null === roleIdByName($pdo, $params, $name)) {
+        fail(sprintf('SAML default role "%s" does not exist: declare it in mautic.roles or create it in Mautic', $name));
+    }
     logmsg('init complete');
 }
 
@@ -377,6 +432,9 @@ $argv0  = array_slice($argv, 1);
 $cmd    = $argv0[0] ?? 'web';
 $rest   = array_slice($argv0, 1);
 $params = buildParameters();
+if (in_array($cmd, ['web', 'worker', 'console'], true)) {
+    resolveSamlDefaultRole($params);
+}
 $envOut = childEnv($params);
 if (in_array($cmd, ['web', 'init', 'worker', 'console'], true)) {
     ensureVarDirs();

@@ -1,0 +1,21 @@
+{
+    "name": "kopexa/mautic-ops-bundle",
+    "description": "Operations commands of the kopexa Mautic image (roles from Helm values). Internal, part of kopexa-grc/mautic-stack.",
+    "type": "mautic-plugin",
+    "license": "Apache-2.0",
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/kopexa-ops",
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
+    "extra": {
+        "install-directory-name": "KopexaOpsBundle"
+    },
+    "require": {
+        "php": "~8.4",
+        "mautic/core-lib": "^7.2"
+    },
+    "minimum-stability": "stable"
+}

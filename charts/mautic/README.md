@@ -1,6 +1,6 @@
 # mautic
 
-![Version: 0.3.10](https://img.shields.io/badge/Version-0.3.10-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.2.2](https://img.shields.io/badge/AppVersion-7.2.2-informational?style=flat-square)  [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.2.2](https://img.shields.io/badge/AppVersion-7.2.2-informational?style=flat-square)  [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
 
 Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), Valkey for cache and sessions, optional MariaDB and restic backups.
 
@@ -68,7 +68,7 @@ httpRoute:
 Verify the chart signature (keyless cosign):
 
 ```bash
-cosign verify ghcr.io/kopexa-grc/charts/mautic:0.3.10 \
+cosign verify ghcr.io/kopexa-grc/charts/mautic:0.4.0 \
   --certificate-identity-regexp 'https://github.com/kopexa-grc/mautic-stack/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -208,8 +208,10 @@ Kubernetes: `>=1.29.0-0`
 | mautic.php.uploadMaxFilesize | string | `"64M"` | PHP upload_max_filesize. |
 | mautic.postal.jwksUrl | string | `""` | Postal's JWKS, e.g. https://postal.example.com/.well-known/jwks.json (allow egress to it when networkPolicy.egress is enabled). |
 | mautic.postal.publicKeyFrom | object | `{}` | Alternatively the webhook public key (PEM) from a Secret/ConfigMap:   publicKeyFrom: {secretKeyRef: {name: postal-webhook, key: public.pem}} |
+| mautic.roles | list | `[]` | Roles the init container creates or updates, matched by name; see docs/sso.md. Declared roles belong to the values: changes made in the Mautic UI are overwritten at the next start. Roles not listed here are never touched, and removing one from the list does not delete it. Permissions use Mautic's format, `bundle:level: [permissions]`.   - name: Marketing     description: Campaigns, emails, contacts     permissions:       lead:leads: [full]       lead:lists: [full]       email:emails: [full]       campaign:campaigns: [full]       form:forms: [full]       page:pages: [full]       asset:assets: [full] |
 | mautic.saml.attributes | object | `{"email":"","firstname":"","lastname":"","username":""}` | IdP attribute names (empty = Mautic defaults). |
-| mautic.saml.defaultRoleId | string | `""` | Mautic role ID given to users created on their first SSO login. Create a restricted role first; role 1 is Administrator. |
+| mautic.saml.defaultRole | string | `""` | Role (by name) given to users created on their first SSO login, e.g. a role from `mautic.roles`. The init fails if it does not exist. Takes the place of `defaultRoleId`; set only one of them. |
+| mautic.saml.defaultRoleId | string | `""` | Role by ID instead of by name (kept for compatibility; role 1 is Administrator). Prefer `defaultRole`. |
 | mautic.saml.enabled | bool | `false` | Enable SAML single sign-on (see docs/sso.md). |
 | mautic.saml.entityId | string | `""` | SP entity ID registered at the IdP. Default: scheme://host of siteUrl. |
 | mautic.saml.idpMetadata | string | `""` | IdP metadata XML — inline, or (preferred) from a ConfigMap/Secret:   idpMetadataFrom: {configMapKeyRef: {name: keycloak-saml, key: metadata.xml}} |

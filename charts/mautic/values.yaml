@@ -186,9 +186,30 @@ mautic:
       username: ""
       firstname: ""
       lastname: ""
-    # -- Mautic role ID given to users created on their first SSO login.
-    # Create a restricted role first; role 1 is Administrator.
+    # -- Role (by name) given to users created on their first SSO login, e.g.
+    # a role from `mautic.roles`. The init fails if it does not exist.
+    # Takes the place of `defaultRoleId`; set only one of them.
+    defaultRole: ""
+    # -- Role by ID instead of by name (kept for compatibility; role 1 is
+    # Administrator). Prefer `defaultRole`.
     defaultRoleId: ""
+
+  # -- Roles the init container creates or updates, matched by name; see
+  # docs/sso.md. Declared roles belong to the values: changes made in the
+  # Mautic UI are overwritten at the next start. Roles not listed here are
+  # never touched, and removing one from the list does not delete it.
+  # Permissions use Mautic's format, `bundle:level: [permissions]`.
+  #   - name: Marketing
+  #     description: Campaigns, emails, contacts
+  #     permissions:
+  #       lead:leads: [full]
+  #       lead:lists: [full]
+  #       email:emails: [full]
+  #       campaign:campaigns: [full]
+  #       form:forms: [full]
+  #       page:pages: [full]
+  #       asset:assets: [full]
+  roles: []
 
   # -- Any other Mautic parameter (merged last, wins), e.g.
   #   { "default_timezone": "Europe/Berlin", "locale": "de" }

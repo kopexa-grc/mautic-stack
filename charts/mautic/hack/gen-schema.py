@@ -59,6 +59,16 @@ OVERRIDES = {
     "worker.transports": {"type": "array", "minItems": 1, "items": {"type": "string"}},
     "mautic.cors.validDomains": {"type": "array", "items": {"type": "string", "pattern": "^https?://[^/]+$"}},
     "mautic.oauth.redirectHosts": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z0-9.-]+$"}},
+    "mautic.roles": {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["name"],
+        "properties": {
+            "name": {"type": "string", "minLength": 1, "maxLength": 191},
+            "description": {"type": "string"},
+            "isAdmin": {"type": "boolean"},
+            "permissions": {"type": "object",
+                            "propertyNames": {"pattern": "^[a-z0-9_]+:[a-z0-9_]+$"},
+                            "additionalProperties": {"type": "array", "minItems": 1, "items": {"type": "string"}}},
+        }}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
     "valkey.maxmemory": {"type": "string", "pattern": "^[0-9]+(b|kb|mb|gb)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},

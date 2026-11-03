@@ -13,9 +13,9 @@ access if the IdP is down.
 - **Service provider (SP)** = Mautic, entity ID `https://<your-host>` by default
 - **Assertion Consumer Service URL:** `https://<your-host>/s/saml/login_check`
 - **Login URL (SP-initiated):** `https://<your-host>/s/saml/login`
-- A user who logs in for the first time is created with
-  `mautic.saml.defaultRoleId`. Create a restricted role in Mautic first —
-  role `1` is Administrator.
+- A user who logs in for the first time is created with the role
+  `mautic.saml.defaultRole` (by name). Declare that role in the values (see
+  [Roles](#roles)); nothing has to be clicked in Mautic.
 
 ## Keycloak
 
@@ -39,7 +39,7 @@ access if the IdP is down.
        idpMetadataFrom:
          configMapKeyRef: {name: keycloak-saml, key: metadata.xml}
        attributes: {email: email, firstname: firstName, lastname: lastName}
-       defaultRoleId: 2
+       defaultRole: Marketing     # declared under mautic.roles, see below
    ```
 
 ## Google Workspace
@@ -53,6 +53,80 @@ access if the IdP is down.
 4. Attribute mapping: *Primary email* → `email`, *First name* → `firstname`,
    *Last name* → `lastname`. Use the same names in `mautic.saml.attributes`.
 5. Turn the app on for the organisational units that should have access.
+
+## Roles
+
+Roles are declared in the values and created or updated by the init
+container (`kopexa:roles:sync`, through Mautic's own role model):
+
+```yaml
+mautic:
+  roles:
+    - name: Marketing
+      description: Kampagnen, E-Mails, Kontakte
+      permissions:
+        lead:leads: [full]
+        lead:lists: [full]
+        email:emails: [full]
+        campaign:campaigns: [full]
+        form:forms: [full]
+        page:pages: [full]
+        asset:assets: [full]
+    - name: Vertrieb
+      permissions:
+        lead:leads: [viewother, editother]
+        report:reports: [viewother]
+  saml:
+    enabled: true
+    defaultRole: Marketing
+```
+
+- **Matched by name.** A role that already exists with that name, created in
+  the UI or by an earlier deploy, is adopted. It keeps its ID, so its users
+  stay assigned, and is set to the declared description, admin flag and
+  permissions. Permissions are replaced, not merged.
+- **Declared roles belong to the values.** Changes made to them in the
+  Mautic UI are overwritten at the next start (every rollout runs the init).
+  Roles that are not declared are never touched.
+- **Removing a role from the list does not delete it.** Delete it in Mautic
+  once no user has it any more. Renaming a role in the values creates a new
+  role; the old one stays with its users.
+- **Idempotent.** A start without changes writes nothing (`unchanged` in
+  the init log).
+- **Validated.** Unknown keys, bundles or permissions fail the init with a
+  message, before anything is written. The chart schema catches typos in the
+  keys already at `helm template`.
+- `isAdmin: true` makes a role administrator (all permissions; leave out
+  `permissions`).
+- `saml.defaultRole` must be declared in `roles` or already exist in Mautic.
+  Otherwise the init fails, and running pods log a warning and start SSO
+  without a default role. Set either `defaultRole` or the older
+  `defaultRoleId`, not both.
+
+### Common permissions
+
+Each entry is `bundle:level: [permissions]`. `full` grants everything on
+that level.
+
+| Key | Area | Permissions |
+|---|---|---|
+| `lead:leads` | contacts | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `full` |
+| `lead:lists` | segments | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `lead:fields` | custom fields | `view`, `full` |
+| `lead:imports` | contact imports | `view`, `edit`, `create`, `delete`, `publish`, `full` |
+| `email:emails` | emails | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `campaign:campaigns` | campaigns | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `form:forms` | forms | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `page:pages` | landing pages | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `asset:assets` | assets | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `report:reports` | reports | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `point:points` | points actions | `view`, `edit`, `create`, `delete`, `publish`, `full` |
+| `stage:stages` | stages | `view`, `edit`, `create`, `delete`, `publish`, `full` |
+| `focus:items` | focus items (popups) | `viewown`, `viewother`, `editown`, `editother`, `create`, `deleteown`, `deleteother`, `publishown`, `publishother`, `full` |
+| `user:users`, `user:roles` | users, roles | `view`, `edit`, `create`, `delete`, `full` |
+
+The full list for your instance is the role form in Mautic (*Settings →
+Roles*); `kopexa:roles:sync` rejects anything Mautic does not know.
 
 ## Signed requests (optional)
 

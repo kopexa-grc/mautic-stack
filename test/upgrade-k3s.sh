@@ -33,6 +33,7 @@ after="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.admin-password}'
 [[ "$before" == "$after" ]] && pass "generated secrets kept across upgrade" || fail "secrets changed"
 init_log="$(kubectl -n "$NS" logs deploy/mautic -c init)"
 grep -q 'database is empty' <<<"$init_log" && fail "upgrade re-installed Mautic" || pass "upgrade kept the database (migrations only)"
+grep -q 'syncing roles' <<<"$init_log" && fail "roles synced without mautic.roles" || pass "without mautic.roles the init leaves roles alone"
 
 oauth_key="$(kubectl -n "$NS" get secret mautic -o jsonpath='{.data.oauth-private-key}')"
 helm upgrade mautic "$CHART" -n "$NS" --reuse-values --wait --timeout 15m >/dev/null

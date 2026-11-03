@@ -460,6 +460,8 @@ source "$(dirname "$0")/mcp-scenarios.sh"
 source "$(dirname "$0")/mcp-contacts.sh"
 # shellcheck source=test/mcp-crm.sh
 source "$(dirname "$0")/mcp-crm.sh"
+# shellcheck source=test/roles.sh
+source "$(dirname "$0")/roles.sh"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \

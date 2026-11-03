@@ -68,7 +68,24 @@ kubectl create namespace "$NS"
 # — web, worker, cron, MariaDB, backup, helm test — must be admitted.
 kubectl label namespace "$NS" pod-security.kubernetes.io/enforce=restricted
 kubectl -n "$NS" create secret generic mautic-backup --from-literal=RESTIC_PASSWORD=e2e-backup
+# SAML with a role declared in the values as default role for new SSO users
+# (a throwaway IdP: metadata with a self-signed certificate).
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj /CN=e2e-idp -keyout /tmp/idp.key -out /tmp/idp.crt 2>/dev/null
+cat >/tmp/idp-metadata.xml <<XML
+<?xml version="1.0"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.e2e.test">
+  <md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <md:KeyDescriptor use="signing"><ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:X509Data><ds:X509Certificate>$(sed '/-----/d' /tmp/idp.crt | tr -d '\n')</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.e2e.test/sso"/>
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>
+XML
+kubectl -n "$NS" create configmap idp-saml --from-file=metadata.xml=/tmp/idp-metadata.xml
 helm install mautic "$CHART" -n "$NS" "${common[@]}" \
+  --set mautic.saml.enabled=true \
+  --set-json 'mautic.saml.idpMetadataFrom={"configMapKeyRef":{"name":"idp-saml","key":"metadata.xml"}}' \
+  --set mautic.saml.defaultRole=Marketing \
+  --set-json 'mautic.roles=[{"name":"Marketing","description":"Kampagnen, E-Mails, Kontakte","permissions":{"lead:leads":["full"],"email:emails":["full"],"campaign:campaigns":["full"]}}]' \
   --set mautic.siteUrl="https://$HOST" \
   --set mautic.mailer.dsn=smtp://mailpit.mail:1025 \
   --set mautic.mailer.fromEmail=mautic@e2e.test --set mautic.mailer.fromName=E2E \
@@ -108,6 +125,23 @@ echo "  redirect: $loc"
 code="$(https -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 1.2.3.4, 173.245.48.1' "https://$HOST/s/login")"
 [[ "$code" == 200 ]] && pass "no redirect loop with public IPs in X-Forwarded-For (CDN in front)" \
   || fail "login via ingress with public X-Forwarded-For: HTTP $code"
+
+step "Roles from values + SAML default role"
+role="$(api "https://$HOST/api/roles?search=Marketing" | jq -c '[.roles[] | select(.name == "Marketing")][0]')"
+rid="$(jq -r .id <<<"$role")"
+jq -e '.isAdmin == false and .rawPermissions == {"campaign:campaigns": ["full"], "email:emails": ["full"], "lead:leads": ["full"]}' <<<"$role" >/dev/null \
+  && pass "role Marketing created by the init (id $rid)" || { echo "$role"; fail "role from values"; }
+saml_role() { kubectl -n "$NS" exec deploy/mautic -c web -- /usr/bin/php -r '
+  foreach (explode("\0", (string) file_get_contents("/proc/1/environ")) as $kv) {
+    if (str_starts_with($kv, "MAUTIC_CONFIG_PARAMETERS=")) { echo json_decode(substr($kv, 25), true)["saml_idp_default_role"] ?? "none"; }
+  }' 2>/dev/null; }
+[[ "$(saml_role)" == "$rid" ]] && pass "saml_idp_default_role of the web pod = ID of Marketing" || fail "SAML default role: $(saml_role) (expected $rid)"
+kubectl -n "$NS" rollout restart deploy/mautic >/dev/null
+kubectl -n "$NS" rollout status deploy/mautic --timeout=10m >/dev/null
+grep -q 'role "Marketing": unchanged' <<<"$(kubectl -n "$NS" logs deploy/mautic -c init)" \
+  && [[ "$(api "https://$HOST/api/roles?search=Marketing" | jq -r '[.roles[] | select(.name == "Marketing")][0].id')" == "$rid" ]] \
+  && [[ "$(saml_role)" == "$rid" ]] \
+  && pass "restart: role unchanged, same ID, same SAML default role" || { kubectl -n "$NS" logs deploy/mautic -c init | tail -5; fail "restart changed roles"; }
 
 step "OAuth 2.1 + MCP discovery through the ingress"
 meta="$(https "https://$HOST/.well-known/oauth-authorization-server")"

@@ -52,12 +52,21 @@ take effect only for parameters that are **not** set through the environment.
 | `/app/docroot/media/files` | uploaded assets | persistent |
 | `/app/docroot/media/images` | uploaded images | persistent |
 
+## Roles
+
+`MAUTIC_ROLES`: JSON list of roles the `init` command creates or updates by
+name (`kopexa:roles:sync`), e.g.
+`[{"name": "Marketing", "permissions": {"lead:leads": ["full"]}}]`. The chart
+sets it from `mautic.roles`; see [sso.md](sso.md#roles).
+
 ## SAML single sign-on
 
 `MAUTIC_SAML_IDP_METADATA` (IdP metadata XML), `MAUTIC_SAML_IDP_ENTITY_ID`,
 `MAUTIC_SAML_IDP_OWN_CERTIFICATE` / `_OWN_PRIVATE_KEY` (PEM, optional),
 `MAUTIC_SAML_IDP_{EMAIL,USERNAME,FIRSTNAME,LASTNAME}_ATTRIBUTE` and
-`MAUTIC_SAML_IDP_DEFAULT_ROLE`. All of them accept `*_FILE`. Plain XML/PEM
+`MAUTIC_SAML_IDP_DEFAULT_ROLE` (role ID) or `MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME`
+(role name, resolved to the ID at every start; see [sso.md](sso.md#roles)).
+All of them accept `*_FILE`. Plain XML/PEM
 is base64-encoded automatically, as Mautic expects. See [sso.md](sso.md).
 
 ## Custom plugins and themes
