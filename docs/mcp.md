@@ -62,6 +62,7 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `get_contact` | `mcp:read` | Profile fields, tags, segments, points (total and per point group), stage, Do-Not-Contact status |
 | `get_contact_activity` | `mcp:read` | History of a contact: email sends, opens, clicks, page visits, form submissions, points and stage changes, segment and campaign membership; filter by type, paginated |
 | `adjust_contact_points` | `mcp:contacts:write` | Add, subtract or set the points of a contact, total score or one point group, with a reason in the points log. **Fires published point triggers**; `dryRun` lists the ones that would fire |
+| `set_contact_stage` | `mcp:contacts:write` | Move a contact into a **published** stage (name or ID) or remove its stage, with a reason in the stage history; `dryRun` lists the dynamic segments filtering on the stage and their running campaigns and segment emails (`live_effects`) |
 | `search_companies`, `get_company` | `mcp:read` | Companies with all fields and their contacts |
 | `list_segments` | `mcp:read` | Segments with contact counts |
 | `list_emails`, `get_email` | `mcp:read` | Emails with type, status, statistics, HTML |
@@ -90,6 +91,12 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `list_point_triggers` | `mcp:read` | Triggers with score, group, events and status |
 | `create_point_trigger` | `mcp:write` | New **unpublished** trigger with its events; tags by name |
 | `update_point_trigger` | `mcp:write` | Change score, group, events. A **published** trigger is live and needs `mcp:campaigns:live`, like a running campaign; `dryRun` shows `live_effects` |
+| `list_stages` | `mcp:read` | Stages (lifecycle phases such as Lead, MQL, SQL, Customer) ordered by weight, with contacts per stage |
+| `create_stage` | `mcp:write` | New **unpublished** stage; name and weight must be unique (Mautic's rule) |
+| `update_stage` | `mcp:write` | Rename, change weight or description; contacts keep their stage |
+| `list_projects`, `get_project` | `mcp:read` | Projects (Mautic 7) with the number of items per type, or all items of one project |
+| `create_project`, `update_project` | `mcp:write` | New project, rename or describe one |
+| `add_to_project`, `remove_from_project` | `mcp:write` | Assign items (email, campaign, segment, form, page, asset, point, pointtrigger, stage, company, …) to a project, up to 100 per call; needs edit rights on each item. Organisational only |
 | `remove_campaign_step` | `mcp:write` | Remove one step; in a running campaign only after `dryRun` + `confirm`, optionally redirecting waiting contacts |
 
 ### Campaign flows
@@ -232,7 +239,10 @@ removed.
 | Change a published point action | Live for new events: contacts get the new points from then on. Points already given stay. |
 | **Change a published point trigger** | Only with `mcp:campaigns:live` and `liveCampaignEdits` (the same locks as running campaigns). Contacts reaching the score from then on get the changed events; outbound events (emails, campaign, integration push) are listed in `live_effects`. With *trigger for existing contacts* enabled, Mautic runs new events right away for contacts already at the score (`new_events_run_now_for`). |
 | **Give a contact points** (`adjust_contact_points`) | **Live.** Mautic fires every published trigger whose score the contact crosses (once per contact), e.g. tags or an email to sales. The result and the `dryRun` list these triggers. |
-| Publish, unpublish, send an email or campaign directly; publish point actions or triggers | Not possible via MCP. |
+| Create a stage | Saved **unpublished**; contacts can only be moved into it after a person publishes it. |
+| **Move a contact to a stage** (`set_contact_stage`) | Saved immediately and logged in the contact's stage history. Dynamic segments filtering on the stage take the contact in (or drop it) with their next update; their running campaigns and segment emails then apply. The result and the `dryRun` list them under `live_effects`. |
+| Create projects, assign items | Organisational only, nothing runs. |
+| Publish, unpublish, send an email or campaign directly; publish point actions, triggers or stages | Not possible via MCP. |
 
 Safeguards for running campaigns:
 
@@ -323,6 +333,13 @@ triggers the contact would cross.
 The smoke test runs this scenario: after the trigger is published,
 `adjust_contact_points` (+60 in the group) makes Mautic tag the contact.
 
+Stages complement this with the lifecycle (Lead → MQL → SQL → Customer).
+The point trigger event *Change contact's stage* moves contacts
+automatically; `set_contact_stage` does it by hand, for example after a
+booked demo. Segments can filter on the stage by its name, e.g.
+`{"field": "stage", "operator": "=", "value": "SQL"}`. Projects then keep
+the whole setup (point actions, triggers, stages, segments, emails) together.
+
 ### Brand emails from layouts
 
 `create_email_from_layout` builds emails from the panels of the Kopexa
@@ -353,8 +370,8 @@ Three layers, all of which must allow an action:
 
 1. **Scopes** of the token, chosen by the user on the consent page:
    - `mcp:read`
-   - `mcp:write` (email and campaign drafts, campaign flows, point groups, actions and triggers)
-   - `mcp:contacts:write` (contacts, companies, custom fields, segments, contact points)
+   - `mcp:write` (email and campaign drafts, campaign flows, point groups, actions and triggers, stages, projects)
+   - `mcp:contacts:write` (contacts, companies, custom fields, segments, contact points and stages)
    - `mcp:campaigns:live` (opt-in, needed for changes to running campaigns and published point triggers)
 
    A write call with a read-only token is answered with
@@ -374,8 +391,9 @@ We recommend a dedicated role, for example *AI Editor*:
 - Campaigns: view, create, edit (own). Edit also covers the role's own
   *running* campaigns, see above.
 - Segments: view
-- Points, triggers, point groups: view; create and edit only if the
-  assistant should set up lead scoring
+- Points, triggers, point groups, stages: view; create and edit only if
+  the assistant should set up lead scoring
+- Projects: view, edit (to sort its own items)
 - Contacts: view only if the assistant really needs contact data
 
 Contact data is personal data. Before giving an assistant contact read
@@ -427,6 +445,11 @@ disabled Mautic user loses access immediately, even with a valid token.
   settings enforced) and trigger created unpublished; after a person
   publishes the trigger, `adjust_contact_points` makes Mautic fire it (tag
   added); the published trigger is locked without `mcp:campaigns:live`
+- stages and projects (`test/mcp-stages.sh`): stage created unpublished
+  with unique name and weight; a segment filter on the stage by name;
+  after a person publishes the stage, `set_contact_stage` (dry run names
+  the dynamic segment) moves the contact; project with a stage and a point
+  trigger
 
 `test/e2e-k3s.sh` checks discovery and the 401 challenge through the HTTPS
 ingress.
