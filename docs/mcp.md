@@ -146,8 +146,9 @@ assistant does it:
 4. `set_campaign_steps`, first with `dryRun`.
 
 The screenshots are the unchanged Mautic campaign builder. Both scenarios
-run on every image build (`test/mcp-scenarios.sh`). Mautic also executes
-them there.
+run in the bundle's functional test
+([`tests/functional/scenarios.sh`](https://github.com/kopexa-grc/mautic-mcp-bundle/blob/main/tests/functional/scenarios.sh)),
+where Mautic also executes them.
 
 **Trial onboarding (16 steps).**
 
@@ -330,7 +331,7 @@ directly, for example after a webinar from the CRM:
 `adjust_contact_points` with a `dryRun` first, which lists the published
 triggers the contact would cross.
 
-The smoke test runs this scenario: after the trigger is published,
+The bundle's functional test runs this scenario: after the trigger is published,
 `adjust_contact_points` (+60 in the group) makes Mautic tag the contact.
 
 Stages complement this with the lifecycle (Lead → MQL → SQL → Customer).
@@ -416,40 +417,25 @@ disabled Mautic user loses access immediately, even with a valid token.
 
 ## Tests
 
-`test/smoke.sh` (section *MCP server*) runs on every image build:
+The tools are tested where they live: the bundle's functional test
+([kopexa-grc/mautic-mcp-bundle](https://github.com/kopexa-grc/mautic-mcp-bundle),
+`tests/functional/`) installs it into a real Mautic 7 on every push and
+covers drafts, scopes, campaign flows executed by Mautic's cron, editing
+running campaigns and its locks, the two scenarios above, contacts and CRM
+sync, lead scoring, stages and projects, and Mautic roles.
 
-- protected resource metadata
-- 401 with `WWW-Authenticate`; forged tokens rejected
-- initialize with a database session, `tools/list`
-- search and contact details
-- create and update a draft; a published email is refused
-- `insufficient_scope` for a read-only token
-- segments, campaign drafts and statistics
-- a complete campaign flow (email → opened? → points / reminder after 3 days), the builder rules, and Mautic's campaign cron executing it
-- editing the running campaign:
-  - an unchanged round trip
-  - wait 3 → 5 days with the step ID kept
-  - adding a step
-  - refused moves
-  - removal only after dry run and confirmation, with the redirect stored in the database
-  - the cron keeps running afterwards
-- the locks:
-  - `mcp:campaigns:live` is offered unticked and only granted when ticked
-  - without it a running campaign is refused (dry run: `save_allowed: false`)
-  - a second replica with `liveCampaignEdits=false` refuses even with the
-    scope, reusing the same MCP session from the database
-- the two realistic scenarios above (`test/mcp-scenarios.sh`), executed by
-  Mautic including a real email open
-- a restricted role that sees no contacts
-- lead scoring (`test/mcp-points.sh`): point group, action (required
-  settings enforced) and trigger created unpublished; after a person
-  publishes the trigger, `adjust_contact_points` makes Mautic fire it (tag
-  added); the published trigger is locked without `mcp:campaigns:live`
-- stages and projects (`test/mcp-stages.sh`): stage created unpublished
-  with unique name and weight; a segment filter on the stage by name;
-  after a person publishes the stage, `set_contact_stage` (dry run names
-  the dynamic segment) moves the contact; project with a stage and a point
-  trigger
+This repository's `test/smoke.sh` (section *MCP server*) checks what only
+the image adds:
+
+- protected resource metadata for the public URL, 401 with
+  `WWW-Authenticate`, forged tokens rejected
+- initialize with a database session, all tools on one page
+- a contact bounced via Postal shows up as Do Not Contact
+- `MAUTIC_MCP_LIVE_CAMPAIGN_EDITS=false` on a second replica refuses
+  changes to live items even with `mcp:campaigns:live`, reusing the same
+  MCP session from the database
+- brand emails from layouts with the Kopexa themes (`test/mcp-layouts.sh`)
+- roles from the Helm values (`test/roles.sh`)
 
 `test/e2e-k3s.sh` checks discovery and the 401 challenge through the HTTPS
 ingress.

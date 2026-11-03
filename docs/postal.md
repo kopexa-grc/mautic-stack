@@ -161,5 +161,8 @@ Mautic's response.
 | `403` | wrong key: JWKS URL of a different Postal instance, or an outdated PEM after a key rotation |
 | `200` but contact not marked | the recipient address does not exist as a contact in Mautic |
 
-The image smoke test exercises all of these paths on every build
-(`test/smoke.sh`, section *Postal bounce webhook*).
+The bundle's functional test
+([kopexa-grc/mautic-postal-bundle](https://github.com/kopexa-grc/mautic-postal-bundle),
+`tests/functional/`) exercises all of these paths; the image smoke test
+(`test/smoke.sh`, section *Postal bounce webhook*) checks that the key from
+`MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY` is used.

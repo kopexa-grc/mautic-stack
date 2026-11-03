@@ -163,7 +163,7 @@ for v in kopexa-confirm kopexa-hero; do
 done
 [[ "$(code /themes/kopexa/assets/placeholder/card-1.png)" == 200 ]] && pass "placeholder images served" || fail "placeholder images missing"
 
-echo "Postal bounce webhook (kopexa/mautic-postal-bundle)"
+echo "Postal bounce webhook (signing key from MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY)"
 api() { curl -s -u 'admin:Sm0ke-Test-Passw0rd!' -H 'Accept: application/json' "$@"; }
 cid="$(api -X POST "$base/api/contacts/new" -d email=bounce@example.com | jq -r '.contact.id')"
 [[ "$cid" =~ ^[0-9]+$ ]] || fail "contact for bounce test"
@@ -175,17 +175,11 @@ postal() { # $1 = body, $2 = key used for signing
 bounce='{"event":"MessageBounced","timestamp":1793500000.1,"uuid":"e2e-1","payload":{"original_message":{"id":1,"direction":"outgoing","to":"bounce@example.com","subject":"E2E"},"bounce":{"id":2}}}'
 wrong_key="$(mktemp)"; openssl genrsa -out "$wrong_key" 2048 2>/dev/null
 [[ "$(postal "$bounce" "$wrong_key")" == 403 ]] && pass "webhook with wrong signature rejected (403)" || fail "bad signature accepted"
-[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/mailer/callback" -d '{}')" == 404 ]] \
-  && pass "unsigned request left to other transports (404)" || fail "unsigned request handled"
 [[ "$(postal "$bounce" "$postal_key")" == 200 ]] && jq -e '.handled == true' /tmp/postal-resp >/dev/null \
   && pass "signed MessageBounced accepted" || { cat /tmp/postal-resp; fail "signed bounce"; }
 dnc="$(api "$base/api/contacts/$cid" | jq -r '.contact.doNotContact[0].reason // empty')"
 [[ "$dnc" == 2 ]] && pass "contact marked Do Not Contact: bounced" || fail "contact not marked bounced (reason=$dnc)"
-delayed='{"event":"MessageDelayed","payload":{"message":{"direction":"outgoing","to":"bounce@example.com"},"status":"SoftFail"}}'
-[[ "$(postal "$delayed" "$postal_key")" == 200 ]] && jq -e '.handled == false' /tmp/postal-resp >/dev/null \
-  && pass "soft failures are ignored" || fail "soft failure handling"
-
-echo "OAuth 2.1 authorization server (kopexa/mautic-oauth-bundle)"
+echo "OAuth 2.1 (keys and issuer from the environment; the bundle tests the protocol)"
 b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }
 b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
 meta="$(curl -s "$base/.well-known/oauth-authorization-server")"
@@ -199,10 +193,6 @@ key_n="$(openssl rsa -in "$oauth_key" -noout -modulus 2>/dev/null | cut -d= -f2 
 [[ "$jwks_n" == "$key_n" ]] && pass "JWKS publishes the signing key" || fail "JWKS key mismatch"
 
 reg() { curl -s -o /tmp/oauth-resp -w '%{http_code}' -X POST "$base/oauth2/register" -H 'Content-Type: application/json' -d "$1"; }
-[[ "$(reg '{"client_name":"Evil","redirect_uris":["https://evil.example/cb"]}')" == 400 ]] \
-  && pass "registration with foreign redirect host rejected" || fail "foreign redirect host accepted"
-[[ "$(reg '{"client_name":"Plain","redirect_uris":["http://evil.example/cb"]}')" == 400 ]] \
-  && pass "registration with non-https redirect rejected" || fail "http redirect accepted"
 redirect="http://127.0.0.1:33418/callback"
 [[ "$(reg '{"client_name":"Smoke MCP client","redirect_uris":["'"$redirect"'"],"token_endpoint_auth_method":"client_secret_post"}')" == 201 ]] \
   || { cat /tmp/oauth-resp; fail "dynamic client registration"; }
@@ -220,12 +210,6 @@ authz() { # $1 = code_challenge_method, $2 = curl cookie jar (or empty)
     --data-urlencode "code_challenge_method=$1" --data-urlencode state=smoke-state \
     --data-urlencode "scope=${SCOPE:-mcp:read mcp:write}" --data-urlencode "resource=$resource"
 }
-fresh_jar="$(mktemp)"
-[[ "$(authz S256 "$fresh_jar")" == *"/s/login"* ]] && pass "authorization requires Mautic login" || fail "authorize without login"
-[[ "$(login_as_admin "$fresh_jar")" == *"/s/oauth2/authorize?"*"client_id=$client_id"* ]] \
-  && pass "login returns to the authorization request" || fail "login does not return to consent"
-[[ "$(authz plain "$jar")" == "302 $redirect?"*"error=invalid_request"* ]] \
-  && pass "PKCE plain rejected (S256 required)" || fail "PKCE plain accepted"
 [[ "$(authz S256 "$jar")" == "200 " ]] && grep -q 'Smoke MCP client' /tmp/oauth-page \
   && pass "consent page shown to the logged-in user" || fail "consent page"
 # What a browser submits for the consent page's <form>: its inputs only
@@ -257,13 +241,9 @@ code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
 token() { curl -s -o /tmp/oauth-resp -w '%{http_code}' -X POST "$base/oauth2/token" "$@"; }
 code_grant() { token --data-urlencode grant_type=authorization_code --data-urlencode "code=$code" \
   --data-urlencode "client_id=$client_id" --data-urlencode "redirect_uri=$redirect" --data-urlencode "code_verifier=$1"; }
-[[ "$(code_grant wrong-verifier-wrong-verifier-wrong-verifier-123)" == 400 ]] \
-  && pass "token request with wrong PKCE verifier rejected" || fail "wrong verifier accepted"
 [[ "$(code_grant "$verifier")" == 200 ]] || { cat /tmp/oauth-resp; fail "code exchange"; }
 access="$(jq -r .access_token /tmp/oauth-resp)"; refresh="$(jq -r .refresh_token /tmp/oauth-resp)"
 pass "code exchanged for access + refresh token"
-printf "campaign=%s base=%s\ntoken=%s\nrun=%s\n" "" "$base" "$access" "$run_id" > "${SMOKE_INFO:-/dev/null}"
-[[ "$(code_grant "$verifier")" == 400 ]] && pass "authorization code is single-use" || fail "code reused"
 
 IFS=. read -r jwt_h jwt_p jwt_s <<<"$access"
 header="$(b64url_decode "$jwt_h")"; claims="$(b64url_decode "$jwt_p")"
@@ -276,51 +256,14 @@ b64url_decode "$jwt_s" >/tmp/oauth-sig
 printf '%s.%s' "$jwt_h" "$jwt_p" | openssl dgst -sha256 -verify /tmp/oauth-pub.pem -signature /tmp/oauth-sig >/dev/null \
   && pass "JWT signature verifies against the JWKS key" || fail "JWT signature"
 
-refresh_grant() { token --data-urlencode grant_type=refresh_token --data-urlencode "refresh_token=$1" --data-urlencode "client_id=$client_id"; }
-[[ "$(refresh_grant "$refresh")" == 200 ]] || { cat /tmp/oauth-resp; fail "refresh"; }
-refresh2="$(jq -r .refresh_token /tmp/oauth-resp)"
-pass "refresh token grant"
-[[ "$(refresh_grant "$refresh")" == 400 ]] && pass "refresh tokens rotate (old one rejected)" || fail "old refresh token accepted"
-[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/oauth2/revoke" --data-urlencode "token=$refresh2" --data-urlencode "client_id=$client_id")" == 200 ]] \
-  && [[ "$(refresh_grant "$refresh2")" == 400 ]] && pass "revoked refresh token rejected (RFC 7009)" || fail "revocation"
-
-authz S256 "$jar" >/dev/null
-[[ "$(decide deny)" == "$redirect?"*"error=access_denied"* ]] && pass "denied consent returns access_denied" || fail "deny"
-# Opt-in scope: "change RUNNING campaigns" is offered unticked; approving
-# with the defaults does not grant it, ticking it does.
-SCOPE='mcp:read mcp:write mcp:campaigns:live' authz S256 "$jar" >/dev/null
-grep -q 'value="mcp:campaigns:live">' /tmp/oauth-page && grep -q 'value="mcp:write" checked' /tmp/oauth-page \
-  && pass "consent page: mcp:campaigns:live is offered unticked (opt-in)" || { grep -o '<li.*</li>' /tmp/oauth-page; fail "consent checkboxes"; }
-location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
-[[ "$(code_grant "$verifier")" == 200 ]] || fail "token with default ticks"
-[[ "$(b64url_decode "$(jq -r .access_token /tmp/oauth-resp | cut -d. -f2)" | jq -r .scope)" == "mcp:read mcp:write" ]] \
-  && pass "default approval does not grant mcp:campaigns:live" || fail "live scope granted without ticking"
 SCOPE='mcp:read mcp:write mcp:campaigns:live' authz S256 "$jar" >/dev/null
 location="$(TICK=mcp:campaigns:live decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
 [[ "$(code_grant "$verifier")" == 200 ]] || fail "token with live scope"
 live_token="$(jq -r .access_token /tmp/oauth-resp)"
 [[ "$(b64url_decode "$(cut -d. -f2 <<<"$live_token")" | jq -r .scope)" == "mcp:read mcp:write mcp:campaigns:live" ]] \
   && pass "ticking it grants mcp:campaigns:live" || fail "live scope not granted"
-SCOPE='mcp:read mcp:write mcp:contacts:write' authz S256 "$jar" >/dev/null
-location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
-[[ "$(code_grant "$verifier")" == 200 ]] || fail "token with contacts scope"
-[[ "$(b64url_decode "$(jq -r .access_token /tmp/oauth-resp | cut -d. -f2)" | jq -r .scope)" == "mcp:read mcp:write mcp:contacts:write" ]] \
-  && pass "consent form as a browser posts it: ticked mcp:write and mcp:contacts:write are granted" || { b64url_decode "$(jq -r .access_token /tmp/oauth-resp | cut -d. -f2)"; fail "ticked scopes not granted"; }
-grep -q '<form method="post">' /tmp/oauth-page && sed -n '/<form method="post">/,/<\/form>/p' /tmp/oauth-page | grep -q 'name="scopes\[\]"' \
-  && pass "scope checkboxes are inside the consent form" || fail "scope checkboxes outside the form"
 
-echo "MCP server (kopexa/mautic-mcp-bundle)"
-# A second, read-only token for the scope checks.
-SCOPE=mcp:read authz S256 "$jar" >/dev/null
-location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
-[[ "$(code_grant "$verifier")" == 200 ]] || fail "read-only token"
-read_token="$(jq -r .access_token /tmp/oauth-resp)"
-# A token for the contact tools (scope mcp:contacts:write).
-SCOPE='mcp:read mcp:contacts:write' authz S256 "$jar" >/dev/null
-location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
-[[ "$(code_grant "$verifier")" == 200 ]] || fail "contacts token"
-contacts_token="$(jq -r .access_token /tmp/oauth-resp)"
-
+echo "MCP server (public URL, sessions across replicas, operator switch; the bundle tests the tools)"
 prm="$(curl -s "$base/.well-known/oauth-protected-resource/mcp")"
 jq -e --arg r "$resource" '.resource == $r and .authorization_servers == ["http://localhost:8080"]' <<<"$prm" >/dev/null \
   && pass "RFC 9728 protected resource metadata" || { echo "$prm"; fail "resource metadata"; }
@@ -353,137 +296,28 @@ jq -e '.contacts[0].email == "bounce@example.com"' <<<"$(result "$found")" >/dev
 contact="$(result "$(call "$access" get_contact "{\"id\":$cid}")")"
 jq -e '.do_not_contact[0].reason == "bounced"' <<<"$contact" >/dev/null \
   && pass "get_contact shows Do Not Contact (bounced)" || { echo "$contact" | head -c 600; fail "get_contact"; }
-draft="$(call "$access" create_email_draft '{"name":"MCP smoke draft","subject":"Hallo","html":"<html><body><p>Hi</p>{unsubscribe_text}</body></html>","type":"template"}')"
-eid="$(result "$draft" | jq -r '.id // empty')"
-[[ "$eid" =~ ^[0-9]+$ ]] && [[ "$(result "$draft" | jq -r .published)" == false ]] \
+draft="$(result "$(call "$access" create_email_draft '{"name":"MCP smoke draft","subject":"Hallo","html":"<html><body><p>Hi</p></body></html>"}')")"
+jq -e '.published == false and (.id | type == "number")' <<<"$draft" >/dev/null \
   && pass "create_email_draft creates an unpublished email" || { echo "$draft" | head -c 600; fail "create_email_draft"; }
-upd="$(call "$access" update_email_draft "{\"id\":$eid,\"subject\":\"Hallo Welt\"}")"
-[[ "$(api "$base/api/emails/$eid" | jq -r .email.subject)" == "Hallo Welt" ]] \
-  && pass "update_email_draft changes the draft" || { echo "$upd" | head -c 600; fail "update_email_draft"; }
-api -X PATCH "$base/api/emails/$eid/edit" -d isPublished=1 >/dev/null
-locked="$(call "$access" update_email_draft "{\"id\":$eid,\"subject\":\"changed\"}")"
-grep -q 'Only unpublished drafts' <<<"$(result "$locked")" && [[ "$(api "$base/api/emails/$eid" | jq -r .email.subject)" == "Hallo Welt" ]] \
-  && pass "published emails cannot be changed via MCP" || { echo "$locked" | head -c 600; fail "published email changed"; }
-denied="$(call "$read_token" create_email_draft '{"name":"x","subject":"x","html":"<p>x</p>"}')"
-grep -q '^HTTP/1.1 403' /tmp/mcp-headers && grep -qi '^www-authenticate:.*insufficient_scope' /tmp/mcp-headers \
-  && grep -qi '^www-authenticate:.*scope="mcp:read mcp:write mcp:contacts:write"' /tmp/mcp-headers \
-  && pass "write tools need the mcp:write scope (403 insufficient_scope, challenge names all regular scopes)" || { cat /tmp/mcp-headers; echo "$denied" | head -c 600; fail "read-only token could write"; }
-reads="$(call "$read_token" list_emails '{"search":"MCP smoke"}')"
-jq -e '.total >= 1' <<<"$(result "$reads")" >/dev/null && pass "read tools work with the mcp:read scope" || { echo "$reads" | head -c 600; fail "list_emails"; }
-sid="$(api -X POST "$base/api/segments/new" -d name='MCP smoke segment' -d isPublished=1 | jq -r '.list.id')"
-segs="$(result "$(call "$access" list_segments '{"search":"MCP smoke"}')")"
-jq -e --argjson id "$sid" '.segments[0].id == $id' <<<"$segs" >/dev/null && pass "list_segments" || { echo "$segs"; fail "list_segments"; }
-camp="$(call "$access" create_campaign_draft "{\"name\":\"MCP smoke campaign\",\"segmentIds\":[$sid]}")"
-campid="$(result "$camp" | jq -r '.id // empty')"
-[[ "$campid" =~ ^[0-9]+$ ]] && jq -e --argjson id "$sid" '.segments[0].id == $id and .published == false' <<<"$(result "$(call "$access" get_campaign "{\"id\":$campid}")")" >/dev/null \
-  && pass "create_campaign_draft + get_campaign (unpublished, segment source)" || { echo "$camp" | head -c 600; fail "campaign draft"; }
-types="$(result "$(call "$access" list_campaign_step_types '{}')")"
-jq -e '[.actions[].type] | index("email.send")' <<<"$types" >/dev/null && jq -e '[.decisions[].type] | index("email.open")' <<<"$types" >/dev/null \
-  && pass "list_campaign_step_types (actions, decisions, conditions)" || { echo "$types" | head -c 600; fail "step types"; }
-desc="$(result "$(call "$access" describe_campaign_step_type '{"type":"email.send"}')")"
-jq -e '[.properties[].name] | index("email")' <<<"$desc" >/dev/null && pass "describe_campaign_step_type (properties from the step form)" || { echo "$desc" | head -c 800; fail "describe step type"; }
-# Welcome email -> opened? yes: +10 points / no (after 3 days): reminder.
-flow='[{"key":"welcome","type":"email.send","properties":{"email":'"$eid"',"email_type":"marketing"}},
-       {"key":"opened","type":"email.open","parent":"welcome"},
-       {"key":"engaged","type":"lead.changepoints","parent":"opened","path":"yes","properties":{"points":10}},
-       {"key":"reminder","type":"email.send","parent":"opened","path":"no","wait":{"interval":3,"unit":"d"},"properties":{"email":'"$eid"',"email_type":"marketing"}}]'
-set_steps() { call "$access" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c . <<<"$1")}"; }
-saved="$(set_steps "$flow")"
-jq -e '.steps | length == 4' <<<"$(result "$saved")" >/dev/null || { echo "$saved" | head -c 1200; fail "set_campaign_steps"; }
-camp_api="$(api "$base/api/campaigns/$campid")"
-jq -e '(.campaign.events | length == 4)
-  and ([.campaign.events[] | select(.name != null and .type == "email.send" and .decisionPath == "no" and .triggerMode == "interval" and .triggerInterval == 3)] | length == 1)
-  and ([.campaign.canvasSettings.nodes[].id | tostring | select(startswith("new"))] | length == 0)
-  and (.campaign.canvasSettings.connections | length == 4)
-  and (.campaign.isPublished == false)' <<<"$camp_api" >/dev/null \
-  && pass "set_campaign_steps: 4 steps with yes/no branches and wait, builder canvas, still unpublished" || { jq -c '.campaign | {events: [.events[] | {name,type,decisionPath,triggerMode,triggerInterval,parent: .parent.id}], canvasSettings}' <<<"$camp_api" | head -c 1500; fail "campaign flow not stored correctly"; }
-bad="$(set_steps '[{"key":"a","type":"email.send","properties":{"email":'"$eid"'}},{"key":"b","type":"email.open","parent":"a"},{"key":"c","type":"email.send","parent":"b","path":"no","properties":{"email":'"$eid"'}}]')"
-grep -q 'set \\"wait\\"\|set "wait"' <<<"$bad$(result "$bad")" && pass "flow rules enforced (no-path of a decision needs a wait)" || { echo "$bad" | head -c 600; fail "missing wait accepted"; }
-bad="$(set_steps '[{"key":"x","type":"email.open"}]')"
-grep -q 'cannot be the first step' <<<"$(result "$bad")" && pass "flow rules enforced (email.open must follow email.send)" || { echo "$bad" | head -c 600; fail "email.open as first step accepted"; }
-[[ "$(api "$base/api/campaigns/$campid" | jq '.campaign.events | length')" == 4 ]] && pass "rejected flows leave the saved one untouched" || fail "rejected flow changed the campaign"
-# The flow really runs: publish it (a human step), add a contact, run Mautic's campaign cron.
-api -X POST "$base/api/contacts/new" -d email=flow@example.com -d firstname=Flow >/dev/null
-flow_cid="$(api "$base/api/contacts?search=flow@example.com" | jq -r '.contacts | keys[0]')"
-api -X POST "$base/api/segments/$sid/contact/$flow_cid/add" >/dev/null
-api -X PATCH "$base/api/campaigns/$campid/edit" -d isPublished=1 >/dev/null
-docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:update -i "$campid" >/dev/null 2>&1
-trigger="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:trigger -i "$campid" 2>&1)"
-grep -qE '[1-9][0-9]* total events? (were|was) executed' <<<"$trigger" \
-  && pass "Mautic executes the flow (campaigns:trigger: $(grep -oE '[0-9]+ total events? (were|was) executed' <<<"$trigger" | head -1))" || { echo "$trigger" | tail -15; fail "campaign flow did not run"; }
-# Editing the RUNNING campaign (published, one contact on its way).
-live="$(result "$(call "$access" get_campaign "{\"id\":$campid}")")"
-blocked="$(call "$access" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$(jq -r '.steps[] | select(.path == "no") | .key' <<<"$live")\",\"wait\":{\"interval\":5,\"unit\":\"d\"}}")"
-preview="$(result "$(call "$access" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$(jq -r '.steps[] | select(.path == "no") | .key' <<<"$live")\",\"wait\":{\"interval\":5,\"unit\":\"d\"},\"dryRun\":true}")")"
-grep -q 'needs the permission "mcp:campaigns:live"' <<<"$(result "$blocked")" && jq -e '.live_effects.save_allowed == false' <<<"$preview" >/dev/null \
-  && pass "running campaign locked without mcp:campaigns:live (dry run shows save_allowed=false)" || { echo "$blocked $preview" | head -c 1500; fail "running campaign not locked"; }
-reminder_id="$(jq -r '.steps[] | select(.path == "no") | .key' <<<"$live")"
-welcome_id="$(jq -r '.steps[] | select(.parent == null) | .key' <<<"$live")"
-jq -e '(.steps | length == 4) and all(.steps[]; .key | test("^[0-9]+$")) and .published == true' <<<"$live" >/dev/null \
-  && pass "get_campaign returns the flow in set_campaign_steps format (keys = step IDs; welcome executed for $(jq -r --arg k "$welcome_id" '.steps[] | select(.key == $k) | .contacts.executed' <<<"$live") contact)" || { echo "$live" | head -c 1500; fail "get_campaign steps"; }
-same="$(call "$live_token" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c '[.steps[] | del(.kind, .contacts)]' <<<"$live")}")"
-jq -e '(.changes.added | length) == 0 and (.changes.changed | length) == 0 and (.changes.removed | length) == 0 and (.changes.unchanged | length) == 4' <<<"$(result "$same")" >/dev/null \
-  && pass "round trip: get_campaign -> set_campaign_steps changes nothing" || { echo "$same" | head -c 1500; fail "round trip"; }
-upd="$(result "$(call "$live_token" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\",\"wait\":{\"interval\":5,\"unit\":\"d\"}}")")"
-jq -e --arg k "$reminder_id" '(.changes.changed == [{"key": $k, "name": .changes.changed[0].name, "fields": ["wait"]}]) and ([.steps[] | select(.key == $k) | .wait] == [{"interval": 5, "unit": "d"}]) and .published == true' <<<"$upd" >/dev/null \
-  && pass "update_campaign_step on a running campaign: wait 3 -> 5 days, same step ID" || { echo "$upd" | head -c 1500; fail "update_campaign_step"; }
-jq -e --arg k "$reminder_id" '.live_effects.contacts_in_campaign >= 1 and .live_effects.outbound_steps == [{"key": $k, "type": "email.send", "name": .live_effects.outbound_steps[0].name, "change": "changed"}] and (.live_effects.warning | test("Confirm with the user"))' <<<"$upd" >/dev/null \
-  && pass "running campaign: result warns that the changed email step is live (live_effects)" || { jq -c .live_effects <<<"$upd"; fail "live_effects missing"; }
-added="$(result "$(call "$live_token" add_campaign_step "{\"campaignId\":$campid,\"step\":{\"key\":\"bonus\",\"type\":\"lead.changepoints\",\"parent\":\"$reminder_id\",\"properties\":{\"points\":5}}}")")"
-bonus_id="$(jq -r '.steps[] | select(.parent == "'"$reminder_id"'") | .key' <<<"$added")"
-jq -e '(.changes.added | length == 1) and (.steps | length == 5)' <<<"$added" >/dev/null && [[ "$bonus_id" =~ ^[0-9]+$ ]] \
-  && pass "add_campaign_step on a running campaign" || { echo "$added" | head -c 1500; fail "add_campaign_step"; }
-moved="$(call "$live_token" set_campaign_steps "{\"id\":$campid,\"steps\":$(jq -c --arg r "$reminder_id" --arg w "$welcome_id" '[.steps[] | del(.kind, .contacts) | if .key == $r then .parent = $w | del(.path) else . end]' <<<"$added")}")"
-grep -q 'cannot be moved' <<<"$(result "$moved")" && pass "steps of a running campaign cannot be moved" || { echo "$moved" | head -c 800; fail "move on running campaign accepted"; }
-haskids="$(call "$live_token" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\"}")"
-grep -q 'has following steps' <<<"$(result "$haskids")" && pass "steps with following steps are not removed" || { echo "$haskids" | head -c 800; fail "removed step with children"; }
-noconfirm="$(call "$live_token" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\"}")"
-dry="$(result "$(call "$live_token" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\",\"dryRun\":true}")")"
-grep -q 'allow_deletions' <<<"$(result "$noconfirm")" && jq -e --arg k "$bonus_id" '.dry_run == true and .changes.removed[0].key == $k and (.changes.removed[0] | has("contacts_scheduled"))' <<<"$dry" >/dev/null \
-  && [[ "$(api "$base/api/campaigns/$campid" | jq '.campaign.events | length')" == 5 ]] \
-  && pass "removing from a running campaign needs confirmation; dryRun reports affected contacts" || { echo "$noconfirm $dry" | head -c 1500; fail "removal safeguards"; }
-gone="$(result "$(call "$live_token" remove_campaign_step "{\"campaignId\":$campid,\"key\":\"$bonus_id\",\"confirm\":true,\"redirectTo\":\"$reminder_id\"}")")"
-row="$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT deleted IS NOT NULL, redirect_event_id FROM campaign_events WHERE id = $bonus_id" 2>/dev/null)"
-jq -e '(.changes.removed | length == 1) and (.steps | length == 4)' <<<"$gone" >/dev/null && [[ "$(tr -s '[:space:]' ' ' <<<"$row" | sed 's/ $//')" == "1 $reminder_id" ]] \
-  && pass "remove_campaign_step with confirm (contacts redirected to the reminder)" || { echo "$gone" | head -c 1500; fail "remove_campaign_step"; }
-docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:campaigns:trigger -i "$campid" >/dev/null 2>&1 \
-  && pass "campaign keeps running after the edits (campaigns:trigger)" || fail "campaigns:trigger after edits"
-# Operator switch: a second replica with mautic.mcp.liveCampaignEdits=false
-# refuses even a token with mcp:campaigns:live (same MCP session, from the DB).
+# Operator switch: MAUTIC_MCP_LIVE_CAMPAIGN_EDITS=false on a second replica
+# refuses changes to live items even with mcp:campaigns:live (same MCP
+# session, from the database). A published point trigger is such an item.
+trig="$(result "$(call "$access" create_point_trigger '{"name":"Smoke live switch","points":10,"events":[{"type":"lead.changetags","name":"tag","properties":{"add_tags":["smoke"]}}]}')")"
+tid="$(jq -r .id <<<"$trig")"
+[[ "$(api -X PATCH "$base/api/points/triggers/$tid/edit" -d isPublished=1 | jq -r .trigger.isPublished)" == true ]] || fail "publish trigger via API"
 docker run -d --name "$run_id-web2" --network "$net" "${hardening[@]}" "${env[@]}" \
   -e MAUTIC_MCP_LIVE_CAMPAIGN_EDITS=false -p 127.0.0.1::8080 "$IMG" web >/dev/null
-base_main="$base"; base="http://127.0.0.1:$(docker port "$run_id-web2" 8080/tcp | head -1 | sed 's/.*://')"
-for _ in $(seq 1 60); do curl -fs "$base/healthz" >/dev/null && break; sleep 1; done
-off="$(result "$(call "$live_token" update_campaign_step "{\"campaignId\":$campid,\"key\":\"$reminder_id\",\"wait\":{\"interval\":6,\"unit\":\"d\"}}")")"
+base2="http://127.0.0.1:$(docker port "$run_id-web2" 8080/tcp | head -1 | sed 's/.*://')"
+for _ in $(seq 1 60); do curl -fs "$base2/healthz" >/dev/null && break; sleep 1; done
+base_main="$base"; base="$base2"
+off="$(result "$(call "$live_token" update_point_trigger "{\"id\":$tid,\"points\":20}")")"
 base="$base_main"; docker rm -f "$run_id-web2" >/dev/null
-grep -q 'disabled on this Mautic instance' <<<"$off" \
-  && pass "liveCampaignEdits=false locks running campaigns even with the scope (2nd replica, shared MCP session)" || { echo "$off" | head -c 800; fail "operator switch"; }
-stats="$(result "$(call "$access" get_email_stats "{\"id\":$eid}")")"
-jq -e '.sent == 1 and (.links | type == "array")' <<<"$stats" >/dev/null && pass "get_email_stats (the campaign sent the welcome email)" || { echo "$stats"; fail "get_email_stats"; }
-# A user whose role may only work on their own emails sees no contacts.
-rid="$(api -X POST "$base/api/roles/new" -d name='AI Editor (smoke)' -d isAdmin=0 \
-  -d 'rawPermissions[email:emails][]=viewown' -d 'rawPermissions[email:emails][]=create' -d 'rawPermissions[email:emails][]=editown' | jq -r '.role.id')"
-api -X POST "$base/api/users/new" -d username=ai-editor -d firstName=AI -d lastName=Editor -d email=ai-editor@example.com \
-  -d "role=$rid" -d 'plainPassword[password]=Ai-Ed1tor-Passw0rd!' -d 'plainPassword[confirm]=Ai-Ed1tor-Passw0rd!' >/dev/null
-jar="$(mktemp)"; login_as_admin "$jar" ai-editor 'Ai-Ed1tor-Passw0rd!' >/dev/null
-authz S256 "$jar" >/dev/null; location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
-[[ "$(code_grant "$verifier")" == 200 ]] || fail "token for restricted user"
-editor_token="$(jq -r .access_token /tmp/oauth-resp)"
-nope="$(call "$editor_token" search_contacts '{"search":"bounce"}')"
-own="$(call "$editor_token" create_email_draft '{"name":"Editor draft","subject":"x","html":"<p>x</p>"}')"
-grep -q 'role does not allow' <<<"$(result "$nope")" && [[ "$(result "$own" | jq -r '.published')" == false ]] \
-  && pass "tools respect the Mautic role of the user (no contacts, own email drafts)" || { echo "$nope $own" | head -c 800; fail "Mautic permissions not applied"; }
+on="$(result "$(call "$live_token" update_point_trigger "{\"id\":$tid,\"points\":20}")")"
+grep -q 'disabled on this Mautic instance' <<<"$off" && jq -e '.points == 20' <<<"$on" >/dev/null \
+  && pass "MAUTIC_MCP_LIVE_CAMPAIGN_EDITS=false locks live items (2nd replica, shared MCP session); default allows them with the scope" || { echo "$off $on" | head -c 800; fail "operator switch"; }
 
-# shellcheck source=test/mcp-scenarios.sh
-source "$(dirname "$0")/mcp-scenarios.sh"
-# shellcheck source=test/mcp-contacts.sh
-source "$(dirname "$0")/mcp-contacts.sh"
-# shellcheck source=test/mcp-crm.sh
-source "$(dirname "$0")/mcp-crm.sh"
-# shellcheck source=test/mcp-points.sh
-source "$(dirname "$0")/mcp-points.sh"
-# shellcheck source=test/mcp-stages.sh
-source "$(dirname "$0")/mcp-stages.sh"
+# shellcheck source=test/mcp-layouts.sh
+source "$(dirname "$0")/mcp-layouts.sh"
 # shellcheck source=test/roles.sh
 source "$(dirname "$0")/roles.sh"
 
@@ -514,4 +348,4 @@ grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && 
 
 v="$(docker run --rm "$IMG" version)"
 pass "mautic version $v"
-printf "campaign=%s base=%s\ntoken=%s\nrun=%s\n%s\n" "$campid" "$base" "$access" "$run_id" "${SCENARIO_INFO:-}" > "${SMOKE_INFO:-/dev/null}"
+printf "base=%s\ntoken=%s\nrun=%s\n" "$base" "$access" "$run_id" > "${SMOKE_INFO:-/dev/null}"

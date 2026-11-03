@@ -94,17 +94,16 @@ exactly `/.well-known/oauth-authorization-server` and
 
 ## Tests
 
-`test/smoke.sh` (section *OAuth 2.1 authorization server*) runs the whole
-flow against the image on every build:
+The protocol is tested in the bundle
+([kopexa-grc/mautic-oauth-bundle](https://github.com/kopexa-grc/mautic-oauth-bundle),
+`tests/functional/`) against a real Mautic 7: registration rules, login
+and consent, PKCE, single-use codes, JWT claims and signature, the consent
+form as a browser posts it, refresh rotation, revocation and denied
+consent.
 
-- metadata and JWKS
-- rejected registrations (foreign host, plain http)
-- login redirect and return to consent
-- `plain` PKCE rejected
-- code exchange with a wrong and then the right verifier
-- single-use codes
-- JWT claims and signature
-- refresh rotation, revocation and denied consent
+`test/smoke.sh` (section *OAuth 2.1*) checks the image's wiring: issuer
+and keys from the environment (metadata, JWKS), a full flow to the tokens
+the MCP checks use, JWT claims for the public URL and the signature.
 
 `test/e2e-k3s.sh` checks discovery through the HTTPS ingress.
 `test/upgrade-k3s.sh` checks that the generated signing key survives
