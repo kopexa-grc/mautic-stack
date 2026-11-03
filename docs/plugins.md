@@ -35,8 +35,17 @@ integrations. They appear under *Settings → Plugins*; nothing to install.
    only run after the confirmation (add to segment, etc.) to the
    post-verification actions.
 
-The chart runs the plugin's jobs (`cron.jobs.doi-*`: follow-up mails,
-timeouts, cleanup); they do nothing as long as no form uses DOI.
+4. Enable the plugin's jobs in the chart (follow-up mails, timeouts,
+   cleanup). They are off by default because they fail while the plugin is
+   disabled:
+
+   ```yaml
+   cron:
+     jobs:
+       doi-send-followup: {enabled: true}
+       doi-update-timeout: {enabled: true}
+       doi-cleanup-submissions: {enabled: true}
+   ```
 
 Our default is **SMTP** (Mautic core) to our [Postal](https://docs.postalserver.io)
 server; the bridges are there to switch to a provider API without
