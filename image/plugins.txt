@@ -20,4 +20,4 @@ symfony/mailjet-mailer:7.4.*
 # Packagist (see docs/extensions.md).
 kopexa/mautic-oauth-bundle:0.4.0
 kopexa/mautic-mcp-bundle:0.6.0
-kopexa/mautic-postal-bundle:0.1.1
+kopexa/mautic-postal-bundle:0.2.0
