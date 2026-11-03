@@ -228,14 +228,26 @@ fresh_jar="$(mktemp)"
   && pass "PKCE plain rejected (S256 required)" || fail "PKCE plain accepted"
 [[ "$(authz S256 "$jar")" == "200 " ]] && grep -q 'Smoke MCP client' /tmp/oauth-page \
   && pass "consent page shown to the logged-in user" || fail "consent page"
-decide() { # $1 = approve|deny ; reads the last consent page; posts the ticked scopes (+ $TICK) like a browser
-  local token txn scopes=()
-  token="$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' /tmp/oauth-page)"
-  txn="$(sed -n 's/.*name="txn" value="\([^"]*\)".*/\1/p' /tmp/oauth-page)"
-  while read -r scope; do [[ -n "$scope" ]] && scopes+=(--data-urlencode "scopes[]=$scope"); done \
-    < <(grep -o 'name="scopes\[\]" value="[^"]*" checked' /tmp/oauth-page | sed 's/.*value="\([^"]*\)".*/\1/'; for t in ${TICK:-}; do echo "$t"; done)
+# What a browser submits for the consent page's <form>: its inputs only
+# (fields outside the form are not sent), checkboxes only if ticked and not
+# disabled; $TICK ticks further checkboxes, only if they exist in the form.
+form_fields() {
+  # shellcheck disable=SC2086  # $TICK: space-separated scopes
+  docker run --rm -i --entrypoint /usr/bin/php "$IMG" -r '
+    $d = new DOMDocument(); @$d->loadHTML((string) stream_get_contents(STDIN));
+    $x = new DOMXPath($d); $tick = array_slice($argv, 1);
+    foreach ($x->query("//form[@method=\"post\"]//input") as $i) {
+      $n = $i->getAttribute("name"); $t = strtolower($i->getAttribute("type"));
+      if ("" === $n || $i->hasAttribute("disabled")) { continue; }
+      if (in_array($t, ["checkbox", "radio"], true) && !$i->hasAttribute("checked") && !in_array($i->getAttribute("value"), $tick, true)) { continue; }
+      echo $n, "=", $i->getAttribute("value"), "\n";
+    }' -- ${TICK:-} </tmp/oauth-page
+}
+decide() { # $1 = approve|deny ; posts the last consent page's form like a browser (+ $TICK)
+  local fields=() f
+  while IFS= read -r f; do [[ -n "$f" ]] && fields+=(--data-urlencode "$f"); done < <(form_fields)
   curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" -c "$jar" -X POST "$base/s/oauth2/authorize" \
-    --data-urlencode "_token=$token" --data-urlencode "txn=$txn" --data-urlencode "decision=$1" "${scopes[@]}"
+    --data-urlencode "decision=$1" "${fields[@]}"
 }
 location="$(decide approve)"
 [[ "$location" == "$redirect?"*"state=smoke-state"* ]] || fail "approve redirect: $location"
@@ -289,6 +301,13 @@ location="$(TICK=mcp:campaigns:live decide approve)"; code="$(sed -n 's/.*[?&]co
 live_token="$(jq -r .access_token /tmp/oauth-resp)"
 [[ "$(b64url_decode "$(cut -d. -f2 <<<"$live_token")" | jq -r .scope)" == "mcp:read mcp:write mcp:campaigns:live" ]] \
   && pass "ticking it grants mcp:campaigns:live" || fail "live scope not granted"
+SCOPE='mcp:read mcp:write mcp:contacts:write' authz S256 "$jar" >/dev/null
+location="$(decide approve)"; code="$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<<"$location")"
+[[ "$(code_grant "$verifier")" == 200 ]] || fail "token with contacts scope"
+[[ "$(b64url_decode "$(jq -r .access_token /tmp/oauth-resp | cut -d. -f2)" | jq -r .scope)" == "mcp:read mcp:write mcp:contacts:write" ]] \
+  && pass "consent form as a browser posts it: ticked mcp:write and mcp:contacts:write are granted" || { b64url_decode "$(jq -r .access_token /tmp/oauth-resp | cut -d. -f2)"; fail "ticked scopes not granted"; }
+grep -q '<form method="post">' /tmp/oauth-page && sed -n '/<form method="post">/,/<\/form>/p' /tmp/oauth-page | grep -q 'name="scopes\[\]"' \
+  && pass "scope checkboxes are inside the consent form" || fail "scope checkboxes outside the form"
 
 echo "MCP server (kopexa/mautic-mcp-bundle)"
 # A second, read-only token for the scope checks.
@@ -347,7 +366,8 @@ grep -q 'Only unpublished drafts' <<<"$(result "$locked")" && [[ "$(api "$base/a
   && pass "published emails cannot be changed via MCP" || { echo "$locked" | head -c 600; fail "published email changed"; }
 denied="$(call "$read_token" create_email_draft '{"name":"x","subject":"x","html":"<p>x</p>"}')"
 grep -q '^HTTP/1.1 403' /tmp/mcp-headers && grep -qi '^www-authenticate:.*insufficient_scope' /tmp/mcp-headers \
-  && pass "write tools need the mcp:write scope (403 insufficient_scope)" || { cat /tmp/mcp-headers; echo "$denied" | head -c 600; fail "read-only token could write"; }
+  && grep -qi '^www-authenticate:.*scope="mcp:read mcp:write mcp:contacts:write"' /tmp/mcp-headers \
+  && pass "write tools need the mcp:write scope (403 insufficient_scope, challenge names all regular scopes)" || { cat /tmp/mcp-headers; echo "$denied" | head -c 600; fail "read-only token could write"; }
 reads="$(call "$read_token" list_emails '{"search":"MCP smoke"}')"
 jq -e '.total >= 1' <<<"$(result "$reads")" >/dev/null && pass "read tools work with the mcp:read scope" || { echo "$reads" | head -c 600; fail "list_emails"; }
 sid="$(api -X POST "$base/api/segments/new" -d name='MCP smoke segment' -d isPublished=1 | jq -r '.list.id')"
