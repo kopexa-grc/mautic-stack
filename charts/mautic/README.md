@@ -188,7 +188,7 @@ Kubernetes: `>=1.29.0-0`
 | mautic.extraEnvFrom | list | `[]` | Extra `envFrom` sources for all Mautic containers. |
 | mautic.ipLookup.authFrom | object | `{}` | Credentials from a Secret (valueFrom source). For MaxMind GeoLite2: "<account id>:<license key>", e.g. {secretKeyRef: {name: maxmind, key: auth}}. |
 | mautic.ipLookup.service | string | `""` | Lookup service; empty = Mautic's default (maxmind_download, MaxMind GeoLite2, free account). |
-| mautic.mailer.dsn | string | `""` | Symfony Mailer DSN, e.g. smtp://user:pass@smtp.example.com:587 Prefer existingSecret, since a DSN usually contains credentials. |
+| mautic.mailer.dsn | string | `""` | Symfony Mailer DSN, e.g. postal+api://API_KEY@postal.example.com (Postal's HTTP API, see docs/postal.md) or smtp://user:pass@smtp.example.com:587. Prefer existingSecret, since a DSN usually contains credentials. |
 | mautic.mailer.dsnKey | string | `"mailer-dsn"` | Key of the DSN in `mailer.existingSecret`. |
 | mautic.mailer.existingSecret | string | `""` | Secret holding the mailer DSN (preferred over `dsn`). |
 | mautic.mailer.fromEmail | string | `""` | Default sender address. |
