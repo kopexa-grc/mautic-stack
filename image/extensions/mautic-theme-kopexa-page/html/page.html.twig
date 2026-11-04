@@ -1,9 +1,11 @@
 {% extends "@themes/"~template~"/html/base.html.twig" %}
-{# Kopexa landing page (brand.kopexa.com): white base, text #10253D, Action
-   Blue for actions, one Navy brand surface with the open route at the end.
-   Mobile first: base styles are for phones, min-width queries add columns.
-   Fonts and logo come from the base theme (themes/kopexa). Sections are
-   independent: delete or duplicate them in the builder. #}
+{# Kopexa lead magnet landing page (brand.kopexa.com).
+   One offer (a free checklist), asked for with one field. Structure:
+   hero (promise + inline email form | art-directed preview), audience,
+   self-check (CSS only), outcomes bento, contents, questions, closing CTA.
+   White base, text #10253D, Action Blue for actions, Navy brand surfaces
+   with the open route; flat colours, radii from the tokens. Mobile first.
+   Fonts and logo come from the base theme (themes/kopexa). #}
 {% set kx = 'themes/kopexa/assets/' %}
 
 {% block content %}
@@ -16,83 +18,153 @@
   /* Brand tokens (brand.kopexa.com/brand/tokens.json); --kx-muted and
      --kx-line are derived for white surfaces (muted text keeps > 4.5:1). */
   :root {
-    --kx-navy: #070B14; --kx-text: #10253D; --kx-white: #FFFFFF;
+    --kx-navy: #070B14; --kx-surface: #101827; --kx-text: #10253D; --kx-white: #FFFFFF;
     --kx-action: #006CB8; --kx-action-hover: #005B9B; --kx-route: #0E9DFD;
     --kx-supporting: #B9C8D7;
     --kx-muted: #475B70; --kx-line: #E1E6EC;
     --kx-r-small: 6px; --kx-r-control: 8px; --kx-r-panel: 14px; --kx-r-frame: 24px;
   }
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
   body { margin: 0; background: var(--kx-white); color: var(--kx-text); font-family: Inter, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
   img { max-width: 100%; height: auto; display: block; }
   a { color: var(--kx-action); }
-  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--kx-action); outline-offset: 3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, label:focus-within { outline: 2px solid var(--kx-action); outline-offset: 3px; }
+  .kx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-  .kx-container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
-  .kx-section { padding: 48px 0; border-top: 1px solid var(--kx-line); }
-  .kx-label { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; letter-spacing: .04em; color: var(--kx-action); margin: 0 0 12px; }
-  .kx-h1, .kx-h2, .kx-h3 { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; color: var(--kx-navy); margin: 0; letter-spacing: -.01em; }
-  .kx-h1 { font-size: 34px; line-height: 1.15; }
-  .kx-h2 { font-size: 26px; line-height: 1.2; }
-  .kx-h3 { font-size: 19px; line-height: 1.3; }
-  .kx-lead { font-size: 18px; color: var(--kx-text); margin: 16px 0 0; max-width: 62ch; }
-  .kx-text { color: var(--kx-muted); margin: 8px 0 0; max-width: 62ch; }
-  .kx-button { display: block; text-align: center; background: var(--kx-action); color: var(--kx-white) !important; text-decoration: none; font-weight: 600; font-size: 16px; line-height: 1.25; padding: 14px 24px; border-radius: var(--kx-r-control); min-height: 48px; }
+  .kx-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  .kx-section { padding: 64px 0; }
+  .kx-label { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; letter-spacing: .04em; color: var(--kx-action); margin: 0 0 14px; }
+  .kx-h1, .kx-h2, .kx-h3 { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; color: var(--kx-navy); margin: 0; }
+  .kx-h1 { font-size: 44px; line-height: 1.02; letter-spacing: -.03em; }
+  .kx-h2 { font-size: 30px; line-height: 1.12; letter-spacing: -.02em; }
+  .kx-h3 { font-size: 20px; line-height: 1.25; letter-spacing: -.01em; }
+  .kx-sub { font-size: 20px; line-height: 1.45; color: var(--kx-text); margin: 18px 0 0; max-width: 30ch; }
+  .kx-text { color: var(--kx-muted); margin: 10px 0 0; max-width: 60ch; }
+  .kx-button { display: block; text-align: center; background: var(--kx-action); color: var(--kx-white) !important; text-decoration: none; font-weight: 600; font-size: 17px; line-height: 1.25; padding: 15px 24px; border-radius: var(--kx-r-control); min-height: 52px; border: 0; }
   .kx-button:hover { background: var(--kx-action-hover); }
-  .kx-link { font-weight: 600; text-decoration: none; }
-  .kx-link:hover { text-decoration: underline; }
-  .kx-actions { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
 
   /* header */
-  .kx-header .kx-container { display: flex; align-items: center; justify-content: space-between; min-height: 64px; }
+  .kx-header .kx-container { display: flex; align-items: center; justify-content: space-between; min-height: 68px; }
   .kx-logo { height: 26px; width: auto; }
+  .kx-header-link { font-weight: 600; font-size: 15px; text-decoration: none; padding: 10px 0; }
+  .kx-header-link:hover { text-decoration: underline; }
 
-  /* hero with the form panel */
-  .kx-hero { padding: 32px 0 48px; }
-  .kx-hero .kx-container { display: grid; gap: 32px; }
-  .kx-points { list-style: none; padding: 0; margin: 24px 0 0; }
-  .kx-points li { display: flex; gap: 12px; align-items: baseline; margin: 8px 0; }
-  .kx-points li span { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; color: var(--kx-action); flex: none; }
-  .kx-panel { border: 1px solid var(--kx-line); border-radius: var(--kx-r-panel); padding: 24px 20px; }
-  .kx-form-slot { margin-top: 16px; padding: 24px 16px; border: 1px dashed var(--kx-supporting); border-radius: var(--kx-r-control); text-align: center; color: var(--kx-muted); font-size: 15px; }
-  .kx-small { font-size: 13px; color: var(--kx-muted); margin: 16px 0 0; }
+  /* hero */
+  .kx-hero { padding: 16px 0 64px; }
+  .kx-hero-grid { display: grid; gap: 40px; align-items: center; }
+  .kx-pill { display: inline-flex; align-items: center; gap: 8px; font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; color: var(--kx-navy); border: 1px solid var(--kx-line); border-radius: var(--kx-r-control); padding: 6px 14px 6px 6px; margin: 0 0 22px; }
+  .kx-pill b { font-weight: 400; color: var(--kx-white); background: var(--kx-action); border-radius: var(--kx-r-small); padding: 2px 10px; }
 
-  /* Mautic forms inside the page */
-  .mauticform_wrapper { max-width: none !important; margin: 16px 0 0 !important; }
-  .mauticform-row { margin-bottom: 16px !important; }
-  .mauticform-label { display: block; font-weight: 600; font-size: 14px; color: var(--kx-navy); margin-bottom: 4px; }
-  .mauticform-input, .mauticform-selectbox, .mauticform-textarea { width: 100%; font: inherit; font-size: 16px; color: var(--kx-text); min-height: 48px; padding: 12px 14px; border: 1px solid var(--kx-supporting); border-radius: var(--kx-r-control); background: var(--kx-white); }
-  .mauticform-input:focus, .mauticform-selectbox:focus, .mauticform-textarea:focus { outline: 2px solid var(--kx-action); outline-offset: 1px; border-color: var(--kx-action); }
-  .mauticform-button { width: 100%; min-height: 48px; background: var(--kx-action) !important; color: var(--kx-white) !important; border: 0 !important; font: inherit; font-weight: 600; font-size: 16px; padding: 14px 20px !important; border-radius: var(--kx-r-control) !important; cursor: pointer; }
+  /* the form: one field and the button side by side from 640 px */
+  .kx-capture { margin-top: 28px; max-width: 520px; }
+  .kx-form-note { font-size: 13px; color: var(--kx-muted); border: 1px dashed var(--kx-supporting); border-radius: var(--kx-r-small); padding: 8px 12px; margin: 0 0 12px; }
+  .kx-capture .mauticform_wrapper { max-width: none !important; margin: 0 !important; }
+  .kx-capture .mauticform-page-wrapper, .kx-mock { display: grid; gap: 10px; }
+  .kx-capture .mauticform-row { margin: 0 !important; }
+  .kx-capture .mauticform-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .mauticform-input { width: 100%; font: inherit; font-size: 17px; color: var(--kx-text); min-height: 52px; padding: 13px 16px; border: 1px solid var(--kx-supporting); border-radius: var(--kx-r-control); background: var(--kx-white); }
+  .mauticform-input::placeholder { color: var(--kx-muted); }
+  .mauticform-input:focus { outline: 2px solid var(--kx-action); outline-offset: 1px; border-color: var(--kx-action); }
+  .mauticform-button { width: 100%; min-height: 52px; background: var(--kx-action) !important; color: var(--kx-white) !important; border: 0 !important; font: inherit; font-weight: 600; font-size: 17px; padding: 14px 22px !important; border-radius: var(--kx-r-control) !important; cursor: pointer; white-space: nowrap; }
   .mauticform-button:hover { background: var(--kx-action-hover) !important; }
   .mauticform-errormsg { color: #B42318; font-size: 13px; }
   .mauticform-message { color: var(--kx-text); font-weight: 600; }
+  .kx-fine { font-size: 13px; color: var(--kx-muted); margin: 12px 0 0; }
+  .kx-fine a { color: var(--kx-muted); }
 
-  /* benefits: structure instead of boxes */
-  .kx-columns { display: grid; gap: 32px; margin-top: 32px; }
-  .kx-column { border-top: 2px solid var(--kx-navy); padding-top: 16px; }
+  /* preview: two pages of the checklist on the brand surface */
+  .kx-stage { position: relative; overflow: hidden; background: var(--kx-navy); border-radius: var(--kx-r-frame); height: 470px; }
+  .kx-stage-route { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .kx-sheet { position: absolute; background: var(--kx-white); border-radius: var(--kx-r-panel); }
+  .kx-sheet--front { left: 24px; right: 24px; top: 34px; max-width: 330px; padding: 20px; }
+  .kx-next { position: absolute; left: 44px; right: 20px; bottom: 20px; background: var(--kx-white); border-radius: var(--kx-r-panel); padding: 14px 16px; border: 2px solid var(--kx-action); }
+  .kx-next small { display: block; font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 11px; color: var(--kx-action); }
+  .kx-next strong { display: block; font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 15px; line-height: 1.3; color: var(--kx-navy); margin-top: 4px; }
+  .kx-next span { display: block; font-size: 12px; color: var(--kx-muted); margin-top: 6px; }
+  .kx-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .kx-sheet-logo { height: 13px; width: auto; }
+  .kx-sheet-tag { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 11px; color: var(--kx-muted); }
+  .kx-sheet-title { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 19px; line-height: 1.2; color: var(--kx-navy); margin: 14px 0 12px; }
+  .kx-progress { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--kx-muted); margin-bottom: 10px; }
+  .kx-progress span { flex: 1; height: 6px; border-radius: var(--kx-r-small); background: var(--kx-line); overflow: hidden; }
+  .kx-progress span::before { content: ''; display: block; width: 62%; height: 100%; background: var(--kx-action); }
+  .kx-row { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--kx-text); padding: 8px 0; border-top: 1px solid var(--kx-line); }
+  .kx-row--next { font-weight: 600; color: var(--kx-navy); }
+  .kx-row em { margin-left: auto; font-style: normal; font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 11px; color: var(--kx-white); background: var(--kx-action); border-radius: var(--kx-r-small); padding: 2px 8px; white-space: nowrap; }
+  .kx-row--extra { display: none; }
+  .kx-box { width: 18px; height: 18px; flex: none; border-radius: var(--kx-r-small); border: 1.5px solid var(--kx-supporting); position: relative; }
+  .kx-box--done { background: var(--kx-action); border-color: var(--kx-action); }
+  .kx-box--done::after { content: ''; position: absolute; left: 5px; top: 1.5px; width: 4px; height: 9px; border: solid var(--kx-white); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
-  /* split with a product view */
-  .kx-split { display: grid; gap: 32px; align-items: center; }
-  .kx-shot { border-radius: var(--kx-r-panel); overflow: hidden; border: 1px solid var(--kx-line); }
+  /* audience */
+  .kx-audience { border-top: 1px solid var(--kx-line); border-bottom: 1px solid var(--kx-line); padding: 22px 0; }
+  .kx-audience .kx-container { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; }
+  .kx-audience p { margin: 0; font-size: 14px; color: var(--kx-muted); }
+  .kx-audience ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .kx-audience li { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 17px; color: var(--kx-navy); }
+
+  /* self-check: three questions, the answer changes with the ticks (CSS :has) */
+  .kx-check { display: grid; gap: 32px; }
+  .kx-quiz { display: grid; gap: 10px; }
+  .kx-q { display: flex; gap: 14px; align-items: center; border: 1px solid var(--kx-line); border-radius: var(--kx-r-panel); padding: 16px 18px; cursor: pointer; font-weight: 600; color: var(--kx-navy); min-height: 64px; }
+  .kx-q input { appearance: none; -webkit-appearance: none; margin: 0; width: 24px; height: 24px; flex: none; border: 1.5px solid var(--kx-supporting); border-radius: var(--kx-r-small); position: relative; cursor: pointer; }
+  .kx-q input:checked { background: var(--kx-action); border-color: var(--kx-action); }
+  .kx-q input:checked::after { content: ''; position: absolute; left: 7px; top: 3px; width: 6px; height: 11px; border: solid var(--kx-white); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .kx-q:has(input:checked) { border-color: var(--kx-action); }
+  .kx-answer { border-radius: var(--kx-r-panel); background: var(--kx-navy); color: var(--kx-white); padding: 24px; }
+  .kx-answer .kx-label { color: var(--kx-supporting); }
+  .kx-answer p { margin: 0; }
+  .kx-answer-text { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 21px; line-height: 1.3; }
+  .kx-answer .kx-button { margin-top: 20px; }
+  .kx-answer-all { display: none; }
+  .kx-check:has(.kx-q input:not(:checked)) .kx-answer-all { display: none; }
+  .kx-check:not(:has(.kx-q input:not(:checked))) .kx-answer-open { display: none; }
+  .kx-check:not(:has(.kx-q input:not(:checked))) .kx-answer-all { display: block; }
+
+  /* outcomes bento */
+  .kx-bento { display: grid; gap: 16px; margin-top: 36px; }
+  .kx-tile { border: 1px solid var(--kx-line); border-radius: var(--kx-r-panel); padding: 24px; display: flex; flex-direction: column; }
+  .kx-tile .kx-h3 { margin-top: 20px; }
+  .kx-viz { border-radius: var(--kx-r-control); background: var(--kx-navy); padding: 18px; min-height: 132px; color: var(--kx-white); font-size: 13px; }
+  .kx-meter { display: grid; gap: 10px; }
+  .kx-meter div { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; color: var(--kx-supporting); }
+  .kx-meter span { height: 8px; border-radius: var(--kx-r-small); background: var(--kx-surface); overflow: hidden; }
+  .kx-meter span::before { content: ''; display: block; height: 100%; background: var(--kx-action); }
+  .kx-meter .m1::before { width: 90%; } .kx-meter .m2::before { width: 55%; } .kx-meter .m3::before { width: 25%; }
+  .kx-prio { display: grid; gap: 8px; }
+  .kx-prio div { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--kx-r-small); background: var(--kx-surface); color: var(--kx-supporting); }
+  .kx-prio .first { background: var(--kx-white); color: var(--kx-navy); font-weight: 600; }
+  .kx-prio b { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-weight: 400; color: var(--kx-supporting); }
+  .kx-prio .first b { color: var(--kx-action); }
+  .kx-chat { display: grid; gap: 8px; }
+  .kx-chat p { margin: 0; padding: 9px 12px; border-radius: var(--kx-r-control); max-width: 88%; }
+  .kx-chat .them { background: var(--kx-surface); color: var(--kx-supporting); }
+  .kx-chat .us { background: var(--kx-white); color: var(--kx-navy); justify-self: end; font-weight: 600; }
+
+  /* contents */
+  .kx-contents { display: grid; gap: 32px; }
+  .kx-items { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--kx-line); }
+  .kx-items li { display: flex; gap: 14px; align-items: flex-start; padding: 15px 0; border-bottom: 1px solid var(--kx-line); font-size: 17px; color: var(--kx-navy); }
+  .kx-items .kx-box { margin-top: 4px; }
 
   /* questions: native details, no script */
-  .kx-faq { margin-top: 24px; border-top: 1px solid var(--kx-line); }
+  .kx-faq { border-top: 1px solid var(--kx-line); }
   .kx-faq details { border-bottom: 1px solid var(--kx-line); }
-  .kx-faq summary { cursor: pointer; list-style: none; padding: 16px 32px 16px 0; position: relative; font-weight: 600; color: var(--kx-navy); }
+  .kx-faq summary { cursor: pointer; list-style: none; padding: 18px 40px 18px 0; min-height: 52px; position: relative; font-weight: 600; font-size: 17px; color: var(--kx-navy); }
   .kx-faq summary::-webkit-details-marker { display: none; }
-  .kx-faq summary::after { content: '+'; position: absolute; right: 4px; top: 12px; font-size: 22px; color: var(--kx-action); }
+  .kx-faq summary::after { content: '+'; position: absolute; right: 6px; top: 13px; font-size: 24px; color: var(--kx-action); }
   .kx-faq details[open] summary::after { content: '–'; }
-  .kx-faq details p { margin: 0 0 16px; color: var(--kx-muted); max-width: 70ch; }
+  .kx-faq details p { margin: 0 0 18px; color: var(--kx-muted); max-width: 70ch; }
 
-  /* the one brand surface: Navy with the open route */
-  .kx-brand { position: relative; overflow: hidden; background: var(--kx-navy); color: var(--kx-white); border-radius: var(--kx-r-frame); padding: 40px 24px 200px; }
-  .kx-brand .kx-h2 { color: var(--kx-white); position: relative; }
-  .kx-brand .kx-label { color: var(--kx-supporting); position: relative; }
-  .kx-brand .kx-text { color: var(--kx-supporting); position: relative; }
-  .kx-brand .kx-actions { position: relative; }
-  .kx-route { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 180px; pointer-events: none; }
+  /* closing call to action */
+  .kx-brand { position: relative; overflow: hidden; background: var(--kx-navy); border-radius: var(--kx-r-frame); padding: 44px 24px 196px; }
+  .kx-brand > * { position: relative; }
+  .kx-brand .kx-label { color: var(--kx-supporting); }
+  .kx-brand .kx-h2 { color: var(--kx-white); }
+  .kx-brand .kx-text { color: var(--kx-supporting); }
+  .kx-brand .kx-button { margin-top: 28px; }
+  .kx-route { position: absolute !important; left: 0; right: 0; bottom: 0; width: 100%; height: 170px; pointer-events: none; }
   .kx-route--wide { display: none; }
 
   /* footer */
@@ -104,129 +176,191 @@
 
   @media (min-width: 640px) {
     .kx-container { padding: 0 32px; }
-    .kx-actions { flex-direction: row; align-items: center; gap: 24px; }
-    .kx-button { display: inline-block; }
-    .kx-panel { padding: 32px; }
+    .kx-h1 { font-size: 60px; }
+    .kx-capture .mauticform-page-wrapper, .kx-mock { grid-template-columns: 1fr auto; }
+    /* email + button share a row; any further fields take a full row */
+    .kx-capture .mauticform-page-wrapper > .mauticform-row:not(.mauticform-email):not(.mauticform-button-wrapper) { grid-column: 1 / -1; }
+    .kx-stage { height: 470px; }
+    .kx-row--extra { display: flex; }
+    .kx-next { left: auto; width: 240px; }
+    .kx-sheet--front { left: 40px; top: 44px; }
+    .kx-brand .kx-button { display: inline-block; }
     .kx-footer .kx-container { flex-direction: row; justify-content: space-between; align-items: center; }
   }
   @media (min-width: 800px) {
-    .kx-columns { grid-template-columns: repeat(3, 1fr); }
-    .kx-brand { padding: 64px 48px; }
-    .kx-brand > *:not(.kx-route) { max-width: 52%; }
-    .kx-route { left: auto; top: 0; width: 46%; height: 100%; }
+    .kx-bento { grid-template-columns: repeat(3, 1fr); }
+    .kx-brand { padding: 72px 56px; }
+    .kx-brand > *:not(.kx-route) { max-width: 54%; }
+    .kx-route { left: auto; top: 0; width: 44%; height: 100%; }
     .kx-route--wide { display: block; }
     .kx-route--narrow { display: none; }
   }
   @media (min-width: 1024px) {
-    .kx-h1 { font-size: 52px; }
-    .kx-h2 { font-size: 36px; }
-    .kx-lead { font-size: 19px; }
-    .kx-hero { padding: 64px 0 96px; }
-    .kx-hero .kx-container { grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: start; }
-    .kx-section { padding: 96px 0; }
-    .kx-split { grid-template-columns: 1fr 1fr; gap: 64px; }
+    .kx-h1 { font-size: 76px; }
+    .kx-h2 { font-size: 42px; }
+    .kx-sub { font-size: 22px; }
+    .kx-hero { padding: 40px 0 96px; }
+    .kx-hero-grid { grid-template-columns: 1.05fr 1fr; gap: 64px; }
+    .kx-stage { height: 540px; }
+    .kx-sheet--front { left: 48px; top: 56px; max-width: 360px; padding: 24px; }
+    .kx-next { right: 40px; bottom: 48px; width: 250px; padding: 16px 18px; }
+    .kx-section { padding: 112px 0; }
+    .kx-check { grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .kx-contents { grid-template-columns: .9fr 1.1fr; gap: 64px; }
   }
 </style>
 
 <header class="kx-header">
   <div class="kx-container">
-    <a href="https://www.kopexa.com/de"><img class="kx-logo" src="{{ getAssetUrl(kx~'logo-dark.png', null, null, true) }}" alt="Kopexa" width="102" height="26"></a>
-    <a class="kx-link" href="https://www.kopexa.com/de">kopexa.com</a>
+    <img class="kx-logo" src="{{ getAssetUrl(kx~'logo-dark.png', null, null, true) }}" alt="Kopexa" width="102" height="26">
+    <a class="kx-header-link" href="#download">Checkliste sichern</a>
   </div>
 </header>
 
 <main>
 <section class="kx-hero">
+  <div class="kx-container kx-hero-grid">
+    <div id="download">
+      <p class="kx-pill"><b>Kostenlos</b>NIS2-Checkliste für Entscheider</p>
+      <h1 class="kx-h1">Wo steht ihr bei NIS2?</h1>
+      <p class="kx-sub">Nach einem Nachmittag weißt du es. Mit einfachen Fragen statt Gesetzestext.</p>
+      <div class="kx-capture">
+        <p class="kx-form-note">Vorschau – im Builder den Block „Form“ hierher ziehen und ein Formular mit dem Feld E-Mail wählen.</p>
+        <div class="kx-mock">
+          <label class="kx-sr" for="kx-mock-email">Geschäftliche E-Mail</label>
+          <input class="mauticform-input" id="kx-mock-email" type="email" placeholder="Deine geschäftliche E-Mail" disabled>
+          <button class="mauticform-button" type="button" disabled>Checkliste erhalten</button>
+        </div>
+      </div>
+      <p class="kx-fine">Kostenlos als PDF. Abmeldung jederzeit. Es gilt unsere <a href="https://kopexa.com/de/legal/privacy">Datenschutzerklärung</a>.</p>
+    </div>
+
+    <div class="kx-stage" aria-hidden="true">
+      <svg class="kx-stage-route" viewBox="640 0 960 1000" preserveAspectRatio="xMaxYMid slice" focusable="false"><path d="M760 1150C760 870 835 783 1070 704C1264 639 1320 568 1301 390C1285 240 1447 135 1700 135" fill="none" stroke="#0E9DFD" stroke-width="190"/></svg>
+      <div class="kx-sheet kx-sheet--front">
+        <div class="kx-sheet-head"><img class="kx-sheet-logo" src="{{ getAssetUrl(kx~'logo-dark.png', null, null, true) }}" alt="" width="51" height="13"><span class="kx-sheet-tag">Seite 1</span></div>
+        <p class="kx-sheet-title">Wo stehen wir?</p>
+        <div class="kx-progress"><span></span>5 von 8 geklärt</div>
+        <div class="kx-row"><span class="kx-box kx-box--done"></span>Wer übernimmt im Ernstfall?</div>
+        <div class="kx-row"><span class="kx-box kx-box--done"></span>Können wir nach einem Ausfall weiterarbeiten?</div>
+        <div class="kx-row kx-row--next"><span class="kx-box"></span>Welche Lieferanten sind kritisch?<em>Als Nächstes</em></div>
+        <div class="kx-row kx-row--extra"><span class="kx-box"></span>Wer meldet was an wen?</div>
+      </div>
+      <div class="kx-next"><small>Dein nächster Schritt</small><strong>Kritische Lieferanten einordnen</strong><span>Zuständig: Einkauf · bis Freitag</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="kx-audience">
   <div class="kx-container">
+    <p>Gemacht für Verantwortliche in</p>
+    <ul><li>Mittelstand</li><li>Stadtwerken</li><li>Kliniken</li><li>IT-Dienstleistern</li><li>KRITIS</li></ul>
+  </div>
+</section>
+
+<section class="kx-section">
+  <div class="kx-container kx-check">
     <div>
-      <p class="kx-label">Wieder dieselben Nachweise zusammensuchen?</p>
-      <h1 class="kx-h1">Dein nächstes Audit. Mit weniger Aufwand.</h1>
-      <p class="kx-lead">Halte Nachweise, Aufgaben und Zuständigkeiten im Zusammenhang. Damit dein Team weiß, was bereit ist und was als Nächstes ansteht.</p>
-      <ul class="kx-points">
-        <li><span>01</span>Risiken verstehen.</li>
-        <li><span>02</span>Verantwortung klären.</li>
-        <li><span>03</span>Umsetzung voranbringen.</li>
-      </ul>
+      <h2 class="kx-h2">Drei Fragen. Kannst du sie sofort beantworten?</h2>
+      <p class="kx-text">Hake ab, was bei euch geklärt ist. Ehrlich – es sieht ja niemand.</p>
     </div>
-    <div class="kx-panel">
-      <h2 class="kx-h3">Lerne Kopexa kennen</h2>
-      <p class="kx-text">Wir zeigen dir an deinem Anwendungsfall, wie Kopexa zusammenhängt. Du entscheidest danach in Ruhe.</p>
-      <div class="kx-form-slot">Formular: im Builder den Block „Form“ hierher ziehen und das Mautic-Formular wählen (ersetzt diesen Kasten).</div>
-      <p class="kx-small">Mit dem Absenden gilt unsere <a href="https://kopexa.com/de/legal/privacy">Datenschutzerklärung</a>. Du kannst dich jederzeit abmelden.</p>
+    <div class="kx-quiz">
+      <label class="kx-q"><input type="checkbox">Ich weiß, wer bei einem Vorfall die Entscheidungen trifft.</label>
+      <label class="kx-q"><input type="checkbox">Wir könnten nach einem Ausfall in kurzer Zeit weiterarbeiten.</label>
+      <label class="kx-q"><input type="checkbox">Ich weiß, welche Lieferanten für uns kritisch sind.</label>
+      <div class="kx-answer" aria-live="polite">
+        <p class="kx-label">Deine Einschätzung</p>
+        <p class="kx-answer-text kx-answer-open">Mindestens eine Frage ist offen. Genau dafür ist die Checkliste gemacht.</p>
+        <p class="kx-answer-text kx-answer-all">Stark. Die Checkliste zeigt dir, wie es in den übrigen Bereichen aussieht.</p>
+        <a class="kx-button" href="#download">Checkliste erhalten</a>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="kx-section">
+<section class="kx-section" style="padding-top: 0;">
   <div class="kx-container">
-    <p class="kx-label">Du kennst die Risiken. Aber was passiert jetzt?</p>
-    <h2 class="kx-h2">Mach aus Erkenntnissen wirksame Schritte.</h2>
-    <p class="kx-lead">Dein Team erkennt, was zusammenhängt, setzt Prioritäten und übernimmt Verantwortung für die Umsetzung.</p>
-    <div class="kx-columns">
-      <div class="kx-column">
-        <h3 class="kx-h3">Wissen, wer übernimmt.</h3>
-        <p class="kx-text">Aufgaben und Zuständigkeiten hängen direkt an der Anforderung. Und was als Nächstes ansteht, ist für alle sichtbar.</p>
+    <h2 class="kx-h2" style="max-width: 18ch;">Was danach besser ist.</h2>
+    <div class="kx-bento">
+      <div class="kx-tile">
+        <div class="kx-viz kx-meter" aria-hidden="true">
+          <div>Zuständigkeiten<span class="m1"></span></div>
+          <div>Notfallplan<span class="m2"></span></div>
+          <div>Lieferanten<span class="m3"></span></div>
+        </div>
+        <h3 class="kx-h3">Klarheit statt Bauchgefühl.</h3>
+        <p class="kx-text">Du siehst, was steht und was fehlt – und kannst es deiner Geschäftsführung in fünf Minuten zeigen.</p>
       </div>
-      <div class="kx-column">
-        <h3 class="kx-h3">Prioritäten setzen.</h3>
-        <p class="kx-text">Risiken bewerten und die wichtigen Maßnahmen zuerst ins Ziel bringen – statt alles gleichzeitig anzufangen.</p>
+      <div class="kx-tile">
+        <div class="kx-viz kx-prio" aria-hidden="true">
+          <div class="first"><b>01</b>Lieferanten einordnen</div>
+          <div><b>02</b>Meldewege festlegen</div>
+          <div><b>03</b>Team informieren</div>
+        </div>
+        <h3 class="kx-h3">Prioritäten statt Aktionismus.</h3>
+        <p class="kx-text">Die offenen Punkte zeigen dir, wo du anfängst. Du verlierst dich nicht in Details.</p>
       </div>
-      <div class="kx-column">
-        <h3 class="kx-h3">Nachweise im Zusammenhang.</h3>
-        <p class="kx-text">Belege liegen dort, wo sie gebraucht werden. Beim Audit zeigst du, was bereit ist.</p>
+      <div class="kx-tile">
+        <div class="kx-viz kx-chat" aria-hidden="true">
+          <p class="them">Habt ihr einen Notfallplan?</p>
+          <p class="us">Ja. Hier ist er.</p>
+        </div>
+        <h3 class="kx-h3">Antworten statt Suche.</h3>
+        <p class="kx-text">Wenn Kunden, Partner oder Prüfer fragen, weißt du, was du sagen kannst.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="kx-section">
-  <div class="kx-container kx-split">
-    <div class="kx-shot">
-      <img src="{{ getAssetUrl(kx~'placeholder/feature.png', null, null, true) }}" alt="Produktansicht (Platzhalter – durch einen freigegebenen Produktausschnitt ersetzen)" width="1152" height="576">
-    </div>
+<section class="kx-section" style="padding-top: 0;">
+  <div class="kx-container kx-contents">
     <div>
-      <p class="kx-label">So sieht es im Produkt aus</p>
-      <h2 class="kx-h2">Eine offene Anforderung. Ein passender Nachweis.</h2>
-      <p class="kx-lead">Zeig, wie dein Team eine Anforderung bearbeitet und den Nachweis hinterlegt – an einem echten Ablauf.</p>
-      <div class="kx-actions">
-        <a class="kx-link" href="https://docs.kopexa.com/">Zur Dokumentation →</a>
-      </div>
+      <p class="kx-label">Das steckt drin</p>
+      <h2 class="kx-h2">Acht Bereiche. Ohne ein einziges Fachwort.</h2>
+      <p class="kx-text">Jede Frage beantwortest du mit den Menschen, die es wissen. Was offen bleibt, wird dein nächster Schritt.</p>
     </div>
+    <ul class="kx-items">
+      <li><span class="kx-box" aria-hidden="true"></span>Wer ist zuständig, wenn etwas passiert?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Wie schnell bemerkt ihr einen Vorfall?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Könnt ihr nach einem Ausfall weiterarbeiten?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Welche Lieferanten sind für euch kritisch?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Wissen alle im Team, worauf sie achten müssen?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Wer hat Zugriff auf eure wichtigsten Daten?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Wer meldet was an wen – und bis wann?</li>
+      <li><span class="kx-box" aria-hidden="true"></span>Prüft ihr regelmäßig, ob eure Maßnahmen wirken?</li>
+    </ul>
   </div>
 </section>
 
-<section class="kx-section">
-  <div class="kx-container">
-    <p class="kx-label">Fragen</p>
+<section class="kx-section" style="padding-top: 0;">
+  <div class="kx-container kx-contents">
     <h2 class="kx-h2">Gut zu wissen</h2>
     <div class="kx-faq">
       <details>
-        <summary>Für wen ist Kopexa gedacht?</summary>
-        <p>Für Unternehmen, die Risiken, Anforderungen, Verantwortlichkeiten und deren Umsetzung gemeinsam steuern wollen – vom Mittelstand bis zu größeren Organisationen.</p>
+        <summary>Kostet die Checkliste etwas?</summary>
+        <p>Nein. Du bekommst sie kostenlos und kannst dich jederzeit von unseren E-Mails abmelden.</p>
       </details>
       <details>
-        <summary>Was passiert nach dem Absenden?</summary>
-        <p>Wir melden uns per E-Mail und stimmen einen Termin mit dir ab.</p>
+        <summary>Brauche ich dafür Fachwissen?</summary>
+        <p>Nein. Die Fragen sind so formuliert, dass du sie mit deinem Team beantworten kannst – ohne Paragrafen oder Fachbegriffe.</p>
       </details>
       <details>
-        <summary>Was kostet das Gespräch?</summary>
-        <p>Nichts. Es ist ein Kennenlernen ohne Verpflichtung.</p>
+        <summary>Ersetzt die Checkliste eine Beratung?</summary>
+        <p>Nein. Die Checkliste hilft dir, den Stand einzuordnen und die richtigen Fragen zu stellen. Die Bewertung bleibt bei dir und deinem Team.</p>
       </details>
     </div>
   </div>
 </section>
 
-<section class="kx-section" style="border-top: 0; padding-top: 0;">
+<section class="kx-section" style="padding-top: 0;">
   <div class="kx-container">
     <div class="kx-brand">
       <svg class="kx-route kx-route--wide" viewBox="640 0 960 1000" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false"><path d="M760 1150C760 870 835 783 1070 704C1264 639 1320 568 1301 390C1285 240 1447 135 1700 135" fill="none" stroke="#0E9DFD" stroke-width="190"/></svg>
       <svg class="kx-route kx-route--narrow" viewBox="0 0 360 180" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false"><path d="M70 230C88 150 150 128 214 108C280 88 300 52 400 46" fill="none" stroke="#0E9DFD" stroke-width="44"/></svg>
       <p class="kx-label">Dein Weg zu mehr Sicherheit.</p>
-      <h2 class="kx-h2">Wie viel leichter wäre dein nächstes Audit, wenn alles zusammenpasst?</h2>
-      <p class="kx-text">Ein Gespräch, dein Anwendungsfall, ein klarer nächster Schritt.</p>
-      <div class="kx-actions">
-        <a class="kx-button" href="#">Kopexa kennenlernen</a>
-      </div>
+      <h2 class="kx-h2">Ein Nachmittag. Danach weißt du, wo ihr steht.</h2>
+      <p class="kx-text">Die Checkliste ist kostenlos und in Sekunden angefordert.</p>
+      <a class="kx-button" href="#download">Checkliste erhalten</a>
     </div>
   </div>
 </section>

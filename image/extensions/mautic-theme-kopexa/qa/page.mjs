@@ -82,9 +82,11 @@ for (const width of [320, 360, 390, 768, 1024, 1280]) {
     const small = [...document.querySelectorAll('.kx-button, .mauticform-button, .mauticform-input')]
       .filter((e) => e.getBoundingClientRect().height < 44).length;
     const perSection = [...document.querySelectorAll('section')].map((s) => s.querySelectorAll('.kx-button').length);
-    const noAlt = [...document.querySelectorAll('img')].filter((i) => !i.getAttribute('alt')).length;
+    // alt="" marks decorative images; a missing alt attribute is the error.
+    const noAlt = [...document.querySelectorAll('img')].filter((i) => !i.hasAttribute('alt')).length;
     const broken = [...document.querySelectorAll('img')].filter((i) => !i.complete || i.naturalWidth === 0).length;
-    const tiny = [...document.querySelectorAll('p, li, a, summary, span')].filter((e) => e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).length;
+    // Illustrations (aria-hidden) may use smaller type; real text stays >= 13px.
+    const tiny = [...document.querySelectorAll('p, li, a, summary, span, label')].filter((e) => !e.closest('[aria-hidden="true"]') && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).length;
     return { overflow, small, maxActions: Math.max(0, ...perSection), noAlt, broken, tiny };
   });
   const problems = [];
