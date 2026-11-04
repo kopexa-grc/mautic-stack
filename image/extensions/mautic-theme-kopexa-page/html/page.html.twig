@@ -1,0 +1,241 @@
+{% extends "@themes/"~template~"/html/base.html.twig" %}
+{# Kopexa landing page (brand.kopexa.com): white base, text #10253D, Action
+   Blue for actions, one Navy brand surface with the open route at the end.
+   Mobile first: base styles are for phones, min-width queries add columns.
+   Fonts and logo come from the base theme (themes/kopexa). Sections are
+   independent: delete or duplicate them in the builder. #}
+{% set kx = 'themes/kopexa/assets/' %}
+
+{% block content %}
+<style>
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/IBM-Plex-Sans-600.ttf', null, null, true) }}') format('truetype'); }
+  @font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/Inter-400.ttf', null, null, true) }}') format('truetype'); }
+  @font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/Inter-600.ttf', null, null, true) }}') format('truetype'); }
+  @font-face { font-family: 'Geist Mono'; font-weight: 400; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/Geist-Mono-400.ttf', null, null, true) }}') format('truetype'); }
+
+  /* Brand tokens (brand.kopexa.com/brand/tokens.json); --kx-muted and
+     --kx-line are derived for white surfaces (muted text keeps > 4.5:1). */
+  :root {
+    --kx-navy: #070B14; --kx-text: #10253D; --kx-white: #FFFFFF;
+    --kx-action: #006CB8; --kx-action-hover: #005B9B; --kx-route: #0E9DFD;
+    --kx-supporting: #B9C8D7;
+    --kx-muted: #475B70; --kx-line: #E1E6EC;
+    --kx-r-small: 6px; --kx-r-control: 8px; --kx-r-panel: 14px; --kx-r-frame: 24px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--kx-white); color: var(--kx-text); font-family: Inter, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  img { max-width: 100%; height: auto; display: block; }
+  a { color: var(--kx-action); }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--kx-action); outline-offset: 3px; }
+
+  .kx-container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .kx-section { padding: 48px 0; border-top: 1px solid var(--kx-line); }
+  .kx-label { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; letter-spacing: .04em; color: var(--kx-action); margin: 0 0 12px; }
+  .kx-h1, .kx-h2, .kx-h3 { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; color: var(--kx-navy); margin: 0; letter-spacing: -.01em; }
+  .kx-h1 { font-size: 34px; line-height: 1.15; }
+  .kx-h2 { font-size: 26px; line-height: 1.2; }
+  .kx-h3 { font-size: 19px; line-height: 1.3; }
+  .kx-lead { font-size: 18px; color: var(--kx-text); margin: 16px 0 0; max-width: 62ch; }
+  .kx-text { color: var(--kx-muted); margin: 8px 0 0; max-width: 62ch; }
+  .kx-button { display: block; text-align: center; background: var(--kx-action); color: var(--kx-white) !important; text-decoration: none; font-weight: 600; font-size: 16px; line-height: 1.25; padding: 14px 24px; border-radius: var(--kx-r-control); min-height: 48px; }
+  .kx-button:hover { background: var(--kx-action-hover); }
+  .kx-link { font-weight: 600; text-decoration: none; }
+  .kx-link:hover { text-decoration: underline; }
+  .kx-actions { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
+
+  /* header */
+  .kx-header .kx-container { display: flex; align-items: center; justify-content: space-between; min-height: 64px; }
+  .kx-logo { height: 26px; width: auto; }
+
+  /* hero with the form panel */
+  .kx-hero { padding: 32px 0 48px; }
+  .kx-hero .kx-container { display: grid; gap: 32px; }
+  .kx-points { list-style: none; padding: 0; margin: 24px 0 0; }
+  .kx-points li { display: flex; gap: 12px; align-items: baseline; margin: 8px 0; }
+  .kx-points li span { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; color: var(--kx-action); flex: none; }
+  .kx-panel { border: 1px solid var(--kx-line); border-radius: var(--kx-r-panel); padding: 24px 20px; }
+  .kx-form-slot { margin-top: 16px; padding: 24px 16px; border: 1px dashed var(--kx-supporting); border-radius: var(--kx-r-control); text-align: center; color: var(--kx-muted); font-size: 15px; }
+  .kx-small { font-size: 13px; color: var(--kx-muted); margin: 16px 0 0; }
+
+  /* Mautic forms inside the page */
+  .mauticform_wrapper { max-width: none !important; margin: 16px 0 0 !important; }
+  .mauticform-row { margin-bottom: 16px !important; }
+  .mauticform-label { display: block; font-weight: 600; font-size: 14px; color: var(--kx-navy); margin-bottom: 4px; }
+  .mauticform-input, .mauticform-selectbox, .mauticform-textarea { width: 100%; font: inherit; font-size: 16px; color: var(--kx-text); min-height: 48px; padding: 12px 14px; border: 1px solid var(--kx-supporting); border-radius: var(--kx-r-control); background: var(--kx-white); }
+  .mauticform-input:focus, .mauticform-selectbox:focus, .mauticform-textarea:focus { outline: 2px solid var(--kx-action); outline-offset: 1px; border-color: var(--kx-action); }
+  .mauticform-button { width: 100%; min-height: 48px; background: var(--kx-action) !important; color: var(--kx-white) !important; border: 0 !important; font: inherit; font-weight: 600; font-size: 16px; padding: 14px 20px !important; border-radius: var(--kx-r-control) !important; cursor: pointer; }
+  .mauticform-button:hover { background: var(--kx-action-hover) !important; }
+  .mauticform-errormsg { color: #B42318; font-size: 13px; }
+  .mauticform-message { color: var(--kx-text); font-weight: 600; }
+
+  /* benefits: structure instead of boxes */
+  .kx-columns { display: grid; gap: 32px; margin-top: 32px; }
+  .kx-column { border-top: 2px solid var(--kx-navy); padding-top: 16px; }
+
+  /* split with a product view */
+  .kx-split { display: grid; gap: 32px; align-items: center; }
+  .kx-shot { border-radius: var(--kx-r-panel); overflow: hidden; border: 1px solid var(--kx-line); }
+
+  /* questions: native details, no script */
+  .kx-faq { margin-top: 24px; border-top: 1px solid var(--kx-line); }
+  .kx-faq details { border-bottom: 1px solid var(--kx-line); }
+  .kx-faq summary { cursor: pointer; list-style: none; padding: 16px 32px 16px 0; position: relative; font-weight: 600; color: var(--kx-navy); }
+  .kx-faq summary::-webkit-details-marker { display: none; }
+  .kx-faq summary::after { content: '+'; position: absolute; right: 4px; top: 12px; font-size: 22px; color: var(--kx-action); }
+  .kx-faq details[open] summary::after { content: '–'; }
+  .kx-faq details p { margin: 0 0 16px; color: var(--kx-muted); max-width: 70ch; }
+
+  /* the one brand surface: Navy with the open route */
+  .kx-brand { position: relative; overflow: hidden; background: var(--kx-navy); color: var(--kx-white); border-radius: var(--kx-r-frame); padding: 40px 24px 200px; }
+  .kx-brand .kx-h2 { color: var(--kx-white); position: relative; }
+  .kx-brand .kx-label { color: var(--kx-supporting); position: relative; }
+  .kx-brand .kx-text { color: var(--kx-supporting); position: relative; }
+  .kx-brand .kx-actions { position: relative; }
+  .kx-route { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 180px; pointer-events: none; }
+  .kx-route--wide { display: none; }
+
+  /* footer */
+  .kx-footer { border-top: 1px solid var(--kx-line); padding: 24px 0 32px; font-size: 14px; color: var(--kx-muted); }
+  .kx-footer .kx-container { display: flex; flex-direction: column; gap: 12px; }
+  .kx-footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .kx-footer a { color: var(--kx-muted); text-decoration: none; padding: 4px 0; }
+  .kx-footer a:hover { color: var(--kx-action); text-decoration: underline; }
+
+  @media (min-width: 640px) {
+    .kx-container { padding: 0 32px; }
+    .kx-actions { flex-direction: row; align-items: center; gap: 24px; }
+    .kx-button { display: inline-block; }
+    .kx-panel { padding: 32px; }
+    .kx-footer .kx-container { flex-direction: row; justify-content: space-between; align-items: center; }
+  }
+  @media (min-width: 800px) {
+    .kx-columns { grid-template-columns: repeat(3, 1fr); }
+    .kx-brand { padding: 64px 48px; }
+    .kx-brand > *:not(.kx-route) { max-width: 52%; }
+    .kx-route { left: auto; top: 0; width: 46%; height: 100%; }
+    .kx-route--wide { display: block; }
+    .kx-route--narrow { display: none; }
+  }
+  @media (min-width: 1024px) {
+    .kx-h1 { font-size: 52px; }
+    .kx-h2 { font-size: 36px; }
+    .kx-lead { font-size: 19px; }
+    .kx-hero { padding: 64px 0 96px; }
+    .kx-hero .kx-container { grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: start; }
+    .kx-section { padding: 96px 0; }
+    .kx-split { grid-template-columns: 1fr 1fr; gap: 64px; }
+  }
+</style>
+
+<header class="kx-header">
+  <div class="kx-container">
+    <a href="https://www.kopexa.com/de"><img class="kx-logo" src="{{ getAssetUrl(kx~'logo-dark.png', null, null, true) }}" alt="Kopexa" width="102" height="26"></a>
+    <a class="kx-link" href="https://www.kopexa.com/de">kopexa.com</a>
+  </div>
+</header>
+
+<main>
+<section class="kx-hero">
+  <div class="kx-container">
+    <div>
+      <p class="kx-label">Wieder dieselben Nachweise zusammensuchen?</p>
+      <h1 class="kx-h1">Dein nächstes Audit. Mit weniger Aufwand.</h1>
+      <p class="kx-lead">Halte Nachweise, Aufgaben und Zuständigkeiten im Zusammenhang. Damit dein Team weiß, was bereit ist und was als Nächstes ansteht.</p>
+      <ul class="kx-points">
+        <li><span>01</span>Risiken verstehen.</li>
+        <li><span>02</span>Verantwortung klären.</li>
+        <li><span>03</span>Umsetzung voranbringen.</li>
+      </ul>
+    </div>
+    <div class="kx-panel">
+      <h2 class="kx-h3">Lerne Kopexa kennen</h2>
+      <p class="kx-text">Wir zeigen dir an deinem Anwendungsfall, wie Kopexa zusammenhängt. Du entscheidest danach in Ruhe.</p>
+      <div class="kx-form-slot">Formular: im Builder den Block „Form“ hierher ziehen und das Mautic-Formular wählen (ersetzt diesen Kasten).</div>
+      <p class="kx-small">Mit dem Absenden gilt unsere <a href="https://kopexa.com/de/legal/privacy">Datenschutzerklärung</a>. Du kannst dich jederzeit abmelden.</p>
+    </div>
+  </div>
+</section>
+
+<section class="kx-section">
+  <div class="kx-container">
+    <p class="kx-label">Du kennst die Risiken. Aber was passiert jetzt?</p>
+    <h2 class="kx-h2">Mach aus Erkenntnissen wirksame Schritte.</h2>
+    <p class="kx-lead">Dein Team erkennt, was zusammenhängt, setzt Prioritäten und übernimmt Verantwortung für die Umsetzung.</p>
+    <div class="kx-columns">
+      <div class="kx-column">
+        <h3 class="kx-h3">Wissen, wer übernimmt.</h3>
+        <p class="kx-text">Aufgaben und Zuständigkeiten hängen direkt an der Anforderung. Und was als Nächstes ansteht, ist für alle sichtbar.</p>
+      </div>
+      <div class="kx-column">
+        <h3 class="kx-h3">Prioritäten setzen.</h3>
+        <p class="kx-text">Risiken bewerten und die wichtigen Maßnahmen zuerst ins Ziel bringen – statt alles gleichzeitig anzufangen.</p>
+      </div>
+      <div class="kx-column">
+        <h3 class="kx-h3">Nachweise im Zusammenhang.</h3>
+        <p class="kx-text">Belege liegen dort, wo sie gebraucht werden. Beim Audit zeigst du, was bereit ist.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="kx-section">
+  <div class="kx-container kx-split">
+    <div class="kx-shot">
+      <img src="{{ getAssetUrl(kx~'placeholder/feature.png', null, null, true) }}" alt="Produktansicht (Platzhalter – durch einen freigegebenen Produktausschnitt ersetzen)" width="1152" height="576">
+    </div>
+    <div>
+      <p class="kx-label">So sieht es im Produkt aus</p>
+      <h2 class="kx-h2">Eine offene Anforderung. Ein passender Nachweis.</h2>
+      <p class="kx-lead">Zeig, wie dein Team eine Anforderung bearbeitet und den Nachweis hinterlegt – an einem echten Ablauf.</p>
+      <div class="kx-actions">
+        <a class="kx-link" href="https://docs.kopexa.com/">Zur Dokumentation →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="kx-section">
+  <div class="kx-container">
+    <p class="kx-label">Fragen</p>
+    <h2 class="kx-h2">Gut zu wissen</h2>
+    <div class="kx-faq">
+      <details>
+        <summary>Für wen ist Kopexa gedacht?</summary>
+        <p>Für Unternehmen, die Risiken, Anforderungen, Verantwortlichkeiten und deren Umsetzung gemeinsam steuern wollen – vom Mittelstand bis zu größeren Organisationen.</p>
+      </details>
+      <details>
+        <summary>Was passiert nach dem Absenden?</summary>
+        <p>Wir melden uns per E-Mail und stimmen einen Termin mit dir ab.</p>
+      </details>
+      <details>
+        <summary>Was kostet das Gespräch?</summary>
+        <p>Nichts. Es ist ein Kennenlernen ohne Verpflichtung.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="kx-section" style="border-top: 0; padding-top: 0;">
+  <div class="kx-container">
+    <div class="kx-brand">
+      <svg class="kx-route kx-route--wide" viewBox="640 0 960 1000" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false"><path d="M760 1150C760 870 835 783 1070 704C1264 639 1320 568 1301 390C1285 240 1447 135 1700 135" fill="none" stroke="#0E9DFD" stroke-width="190"/></svg>
+      <svg class="kx-route kx-route--narrow" viewBox="0 0 360 180" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false"><path d="M70 230C88 150 150 128 214 108C280 88 300 52 400 46" fill="none" stroke="#0E9DFD" stroke-width="44"/></svg>
+      <p class="kx-label">Dein Weg zu mehr Sicherheit.</p>
+      <h2 class="kx-h2">Wie viel leichter wäre dein nächstes Audit, wenn alles zusammenpasst?</h2>
+      <p class="kx-text">Ein Gespräch, dein Anwendungsfall, ein klarer nächster Schritt.</p>
+      <div class="kx-actions">
+        <a class="kx-button" href="#">Kopexa kennenlernen</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="kx-footer">
+  <div class="kx-container">
+    <span>© Kopexa GmbH</span>
+    <nav aria-label="Rechtliches"><a href="https://kopexa.com/de/legal/imprint">Impressum</a><a href="https://kopexa.com/de/legal/privacy">Datenschutz</a></nav>
+  </div>
+</footer>
+{% endblock %}

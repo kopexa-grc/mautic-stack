@@ -26,6 +26,10 @@ use its assets.
 | *Kopexa · Anmeldung bestätigen* | [`mautic-theme-kopexa-confirm`](../mautic-theme-kopexa-confirm) | double opt-in: button to `{doi_link}` of the Leuchtfeuer DOI plugin (see [docs/plugins.md](../../../docs/plugins.md#double-opt-in)) |
 | *Kopexa · Hero + Split* | [`mautic-theme-kopexa-hero`](../mautic-theme-kopexa-hero) | hero on the dark surface, two cards with images, one full-width feature; delete what you don't need |
 
+Landing pages have their own theme on a white base,
+[`mautic-theme-kopexa-page`](../mautic-theme-kopexa-page) (*Kopexa · Landing
+Page*), checked by `qa/page.mjs`.
+
 <img src="../mautic-theme-kopexa-confirm/thumbnail.png" width="49%" alt="Anmeldung bestätigen"> <img src="../mautic-theme-kopexa-hero/thumbnail.png" width="49%" alt="Hero + Split">
 
 The images in *Hero + Split* (`assets/placeholder/`) are abstract
@@ -116,6 +120,15 @@ for t in .. ../../mautic-theme-kopexa-confirm ../../mautic-theme-kopexa-hero; do
   node render.mjs $t && node check.mjs $t && ./deliverability.sh $t && node screenshots.mjs $t
 done
 ```
+
+Landing page themes: `node page.mjs ../../mautic-theme-kopexa-page`
+(brand palette, contrast, radii, no shadows, links, copy rules, no sideways
+scrolling from 320 to 1280 px, tap targets, one primary action per section,
+screenshots and thumbnail).
+
+`qa/tokens.json` is a copy of
+[brand.kopexa.com/brand/tokens.json](https://brand.kopexa.com/brand/tokens.json);
+CI compares the two and fails when the brand changed, so the themes follow it.
 
 Sending-side deliverability (SPF, DKIM, DMARC alignment of the Postal
 domain, RFC 8058 one-click unsubscribe headers) is a property of the

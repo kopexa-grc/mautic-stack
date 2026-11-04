@@ -7,6 +7,7 @@
 | `kopexa/mautic-postal-bundle` | [kopexa-grc/mautic-postal-bundle](https://github.com/kopexa-grc/mautic-postal-bundle) | [link](https://packagist.org/packages/kopexa/mautic-postal-bundle) | Postal bounce webhooks ([docs/postal.md](postal.md)) |
 | `kopexa/mautic-theme-kopexa` | this repository, [`image/extensions/mautic-theme-kopexa`](../image/extensions/mautic-theme-kopexa) | – | Kopexa email theme (with fonts, logo, placeholder images, QA tooling); internal, not published |
 | `kopexa/mautic-theme-kopexa-confirm`, `-hero` | this repository, `image/extensions/mautic-theme-kopexa-*` | – | variants of the theme (a Mautic theme holds one email template); use the base theme's assets |
+| `kopexa/mautic-theme-kopexa-page` | this repository, [`image/extensions/mautic-theme-kopexa-page`](../image/extensions/mautic-theme-kopexa-page) | – | Kopexa landing page theme (white base, mobile first); uses the base theme's fonts and logo |
 
 The three bundles live in their own repositories, with their history from
 this one. Each one has:

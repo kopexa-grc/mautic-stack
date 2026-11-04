@@ -1,10 +1,12 @@
 name: theme
 
-# Quality gate for the Kopexa email themes (image/extensions/mautic-theme-kopexa*,
-# QA tooling in mautic-theme-kopexa/qa), one job per theme:
-# render with the MJML version Mautic's builder uses, static checks (size,
-# links, images, a11y, brand palette, contrast), deliverability via Mailpit
-# + rspamd (client compatibility, link check, spam score), screenshots.
+# Quality gate for the Kopexa themes (image/extensions/mautic-theme-kopexa*,
+# QA tooling in mautic-theme-kopexa/qa):
+# - email themes, one job each: render with the MJML version Mautic's
+#   builder uses, static checks (size, links, images, a11y, brand palette,
+#   contrast), deliverability via Mailpit + rspamd, screenshots;
+# - landing page themes: brand rules and mobile-first layout in a browser;
+# - brand: qa/tokens.json must match brand.kopexa.com.
 
 on:
   push:
@@ -12,6 +14,9 @@ on:
     paths: [image/extensions/mautic-theme-kopexa*/**, .github/workflows/theme.yml]
   pull_request:
     paths: [image/extensions/mautic-theme-kopexa*/**, .github/workflows/theme.yml]
+  # Weekly: notice brand changes (brand.kopexa.com) even without a push.
+  schedule:
+    - cron: "17 5 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -63,3 +68,46 @@ jobs:
             image/extensions/mautic-theme-kopexa/qa/dist
             image/extensions/${{ matrix.theme }}/thumbnail.png
           retention-days: 30
+
+  page:
+    name: qa (${{ matrix.theme }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [mautic-theme-kopexa-page]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: image/extensions/mautic-theme-kopexa/qa/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Brand rules, mobile first, screenshots
+        run: |
+          node page.mjs "../../${{ matrix.theme }}"
+          git -C "$GITHUB_WORKSPACE" diff --quiet -- "image/extensions/${{ matrix.theme }}/thumbnail.png" \
+            || echo "::notice::thumbnail.png of ${{ matrix.theme }} changed — commit the new one from the artifact"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: theme-qa-${{ matrix.theme }}
+          path: |
+            image/extensions/mautic-theme-kopexa/qa/dist
+            image/extensions/${{ matrix.theme }}/thumbnail.png
+          retention-days: 30
+
+  brand:
+    name: brand tokens up to date (brand.kopexa.com)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: qa/tokens.json == brand.kopexa.com/brand/tokens.json
+        run: |
+          curl -fsSL https://brand.kopexa.com/brand/tokens.json -o /tmp/brand-tokens.json
+          if ! diff <(jq -S . /tmp/brand-tokens.json) <(jq -S . tokens.json); then
+            echo "::error::The brand tokens changed on brand.kopexa.com — update qa/tokens.json and check the themes"
+            exit 1
+          fi

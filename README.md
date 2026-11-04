@@ -24,8 +24,8 @@ Kubernetes.
   creates emails and campaigns unpublished and edits campaign flows,
   including running campaigns (live, see the docs). It works with the
   user's Mautic permissions and never publishes or sends directly.
-- **Built-in extensions** — Postal bounce handling, Kopexa email theme with
-  a deliverability gate, double opt-in, Symfony mailer bridges
+- **Built-in extensions** — Postal bounce handling, Kopexa email themes with
+  a deliverability gate, a Kopexa landing page theme (mobile first), double opt-in, Symfony mailer bridges
   ([docs/plugins.md](docs/plugins.md)).
 - **Automatic updates** — Renovate opens a PR for every Mautic release on
   Packagist as soon as it is out; patch releases are merged automatically

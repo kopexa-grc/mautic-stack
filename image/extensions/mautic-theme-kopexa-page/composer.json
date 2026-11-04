@@ -1,0 +1,30 @@
+{
+    "name": "kopexa/mautic-theme-kopexa-page",
+    "description": "Kopexa landing page theme for Mautic: white base, hero with a form card, facts, features, split, testimonial, call to action.",
+    "type": "mautic-theme",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mautic",
+        "theme",
+        "landing-page"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa-page",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
+    "extra": {
+        "install-directory-name": "kopexa-page"
+    },
+    "require": {
+        "mautic/core-lib": "^7.0",
+        "kopexa/mautic-theme-kopexa": "^0.3"
+    },
+    "minimum-stability": "stable"
+}
