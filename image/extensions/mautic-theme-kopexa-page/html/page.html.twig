@@ -36,10 +36,10 @@
   .kx-section { padding: 64px 0; }
   .kx-label { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 13px; letter-spacing: .04em; color: var(--kx-action); margin: 0 0 14px; }
   .kx-h1, .kx-h2, .kx-h3 { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; color: var(--kx-navy); margin: 0; }
-  .kx-h1 { font-size: 44px; line-height: 1.02; letter-spacing: -.03em; }
+  .kx-h1 { font-size: 38px; line-height: 1.06; letter-spacing: -.03em; }
   .kx-h2 { font-size: 30px; line-height: 1.12; letter-spacing: -.02em; }
   .kx-h3 { font-size: 20px; line-height: 1.25; letter-spacing: -.01em; }
-  .kx-sub { font-size: 20px; line-height: 1.45; color: var(--kx-text); margin: 18px 0 0; max-width: 30ch; }
+  .kx-sub { font-size: 19px; line-height: 1.5; color: var(--kx-text); margin: 20px 0 0; max-width: 46ch; }
   .kx-text { color: var(--kx-muted); margin: 10px 0 0; max-width: 60ch; }
   .kx-button { display: block; text-align: center; background: var(--kx-action); color: var(--kx-white) !important; text-decoration: none; font-weight: 600; font-size: 17px; line-height: 1.25; padding: 15px 24px; border-radius: var(--kx-r-control); min-height: 52px; border: 0; }
   .kx-button:hover { background: var(--kx-action-hover); }
@@ -70,6 +70,13 @@
   .mauticform-button:hover { background: var(--kx-action-hover) !important; }
   .mauticform-errormsg { color: #B42318; font-size: 13px; }
   .mauticform-message { color: var(--kx-text); font-weight: 600; }
+  .kx-ticks { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 8px; }
+  .kx-ticks li { position: relative; padding-left: 26px; font-weight: 600; color: var(--kx-navy); font-size: 15px; }
+  .kx-ticks li::before { content: ''; position: absolute; left: 0; top: 3px; width: 18px; height: 18px; border-radius: var(--kx-r-small); background: var(--kx-action); }
+  .kx-ticks li::after { content: ''; position: absolute; left: 6.5px; top: 6px; width: 4px; height: 8px; border: solid var(--kx-white); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .mauticform-selectbox { width: 100%; font: inherit; font-size: 17px; color: var(--kx-text); min-height: 52px; padding: 12px 40px 12px 16px; border: 1px solid var(--kx-supporting); border-radius: var(--kx-r-control); background: var(--kx-white); appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23475B70' stroke-width='1.8'/%3E%3C/svg%3E"); background-position: right 16px center; background-size: 12px 8px; background-repeat: no-repeat; }
+  .mauticform-selectbox:focus { outline: 2px solid var(--kx-action); outline-offset: 1px; border-color: var(--kx-action); }
+  .kx-mock-full { grid-column: 1 / -1; }
   .kx-fine { font-size: 13px; color: var(--kx-muted); margin: 12px 0 0; }
   .kx-fine a { color: var(--kx-muted); }
 
@@ -176,7 +183,7 @@
 
   @media (min-width: 640px) {
     .kx-container { padding: 0 32px; }
-    .kx-h1 { font-size: 60px; }
+    .kx-h1 { font-size: 50px; }
     .kx-capture .mauticform-page-wrapper, .kx-mock { grid-template-columns: 1fr auto; }
     /* email + button share a row; any further fields take a full row */
     .kx-capture .mauticform-page-wrapper > .mauticform-row:not(.mauticform-email):not(.mauticform-button-wrapper) { grid-column: 1 / -1; }
@@ -196,9 +203,9 @@
     .kx-route--narrow { display: none; }
   }
   @media (min-width: 1024px) {
-    .kx-h1 { font-size: 76px; }
+    .kx-h1 { font-size: 60px; }
     .kx-h2 { font-size: 42px; }
-    .kx-sub { font-size: 22px; }
+    .kx-sub { font-size: 20px; }
     .kx-hero { padding: 40px 0 96px; }
     .kx-hero-grid { grid-template-columns: 1.05fr 1fr; gap: 64px; }
     .kx-stage { height: 540px; }
@@ -221,17 +228,24 @@
 <section class="kx-hero">
   <div class="kx-container kx-hero-grid">
     <div id="download">
-      <p class="kx-pill"><b>Kostenlos</b>NIS2-Checkliste für Entscheider</p>
-      <h1 class="kx-h1">Wo steht ihr bei NIS2?</h1>
-      <p class="kx-sub">Nach einem Nachmittag weißt du es. Mit einfachen Fragen statt Gesetzestext.</p>
+      <p class="kx-pill"><b>Kostenlos</b>Für alle, die NIS2 koordinieren</p>
+      <h1 class="kx-h1">NIS2 umsetzen.<br>Wissen, was steht – und was noch fehlt.</h1>
+      <p class="kx-sub">Mit unserer kostenlosen Checkliste prüfst du, welche Zuständigkeiten, Maßnahmen und Abläufe bereits geklärt sind – und wo noch Handlungsbedarf besteht.</p>
       <div class="kx-capture">
-        <p class="kx-form-note">Vorschau – im Builder den Block „Form“ hierher ziehen und ein Formular mit dem Feld E-Mail wählen.</p>
+        <p class="kx-form-note">Vorschau – im Builder den Block „Form“ hierher ziehen und das Formular (Rolle, E-Mail) wählen.</p>
         <div class="kx-mock">
+          <label class="kx-sr" for="kx-mock-role">Deine Rolle</label>
+          <select class="mauticform-selectbox kx-mock-full" id="kx-mock-role" disabled><option>Deine Rolle</option><option>IT-Leitung</option><option>NIS2-Projektverantwortung / ISB</option><option>Geschäftsführung</option><option>Beratung</option><option>Andere</option></select>
           <label class="kx-sr" for="kx-mock-email">Geschäftliche E-Mail</label>
           <input class="mauticform-input" id="kx-mock-email" type="email" placeholder="Deine geschäftliche E-Mail" disabled>
           <button class="mauticform-button" type="button" disabled>Checkliste erhalten</button>
         </div>
       </div>
+      <ul class="kx-ticks">
+        <li>Verantwortlichkeiten überprüfen</li>
+        <li>Offene Maßnahmen erkennen</li>
+        <li>Nächste Schritte festlegen</li>
+      </ul>
       <p class="kx-fine">Kostenlos als PDF. Abmeldung jederzeit. Es gilt unsere <a href="https://kopexa.com/de/legal/privacy">Datenschutzerklärung</a>.</p>
     </div>
 
@@ -253,24 +267,24 @@
 
 <section class="kx-audience">
   <div class="kx-container">
-    <p>Gemacht für Verantwortliche in</p>
-    <ul><li>Mittelstand</li><li>Stadtwerken</li><li>Kliniken</li><li>IT-Dienstleistern</li><li>KRITIS</li></ul>
+    <p>Gemacht für</p>
+    <ul><li>IT-Leitung</li><li>NIS2-Projektverantwortliche</li><li>Informationssicherheitsbeauftragte</li><li>Geschäftsführung im Mittelstand</li></ul>
   </div>
 </section>
 
 <section class="kx-section">
   <div class="kx-container kx-check">
     <div>
-      <h2 class="kx-h2">Drei Fragen. Kannst du sie sofort beantworten?</h2>
+      <h2 class="kx-h2">Du sollst NIS2 koordinieren. Kannst du diese drei Punkte abhaken?</h2>
       <p class="kx-text">Hake ab, was bei euch geklärt ist. Ehrlich – es sieht ja niemand.</p>
     </div>
     <div class="kx-quiz">
-      <label class="kx-q"><input type="checkbox">Ich weiß, wer bei einem Vorfall die Entscheidungen trifft.</label>
-      <label class="kx-q"><input type="checkbox">Wir könnten nach einem Ausfall in kurzer Zeit weiterarbeiten.</label>
-      <label class="kx-q"><input type="checkbox">Ich weiß, welche Lieferanten für uns kritisch sind.</label>
+      <label class="kx-q"><input type="checkbox">Für jede Maßnahme ist klar, wer sie verantwortet.</label>
+      <label class="kx-q"><input type="checkbox">Ich kann zeigen, was umgesetzt ist – und was noch offen ist.</label>
+      <label class="kx-q"><input type="checkbox">Bei einem Vorfall weiß jeder, wer was an wen meldet.</label>
       <div class="kx-answer" aria-live="polite">
         <p class="kx-label">Deine Einschätzung</p>
-        <p class="kx-answer-text kx-answer-open">Mindestens eine Frage ist offen. Genau dafür ist die Checkliste gemacht.</p>
+        <p class="kx-answer-text kx-answer-open">Mindestens ein Punkt ist offen. Die Checkliste zeigt dir, wo du ansetzt.</p>
         <p class="kx-answer-text kx-answer-all">Stark. Die Checkliste zeigt dir, wie es in den übrigen Bereichen aussieht.</p>
         <a class="kx-button" href="#download">Checkliste erhalten</a>
       </div>
@@ -280,16 +294,24 @@
 
 <section class="kx-section" style="padding-top: 0;">
   <div class="kx-container">
-    <h2 class="kx-h2" style="max-width: 18ch;">Was danach besser ist.</h2>
+    <h2 class="kx-h2" style="max-width: 20ch;">Was du danach in der Hand hast.</h2>
     <div class="kx-bento">
       <div class="kx-tile">
-        <div class="kx-viz kx-meter" aria-hidden="true">
-          <div>Zuständigkeiten<span class="m1"></span></div>
-          <div>Notfallplan<span class="m2"></span></div>
-          <div>Lieferanten<span class="m3"></span></div>
+        <div class="kx-viz kx-chat" aria-hidden="true">
+          <p class="them">Geschäftsführung: Wo stehen wir bei NIS2?</p>
+          <p class="us">Hier ist der Stand – mit Zuständigen.</p>
         </div>
-        <h3 class="kx-h3">Klarheit statt Bauchgefühl.</h3>
-        <p class="kx-text">Du siehst, was steht und was fehlt – und kannst es deiner Geschäftsführung in fünf Minuten zeigen.</p>
+        <h3 class="kx-h3">Verantwortlichkeiten überprüfen.</h3>
+        <p class="kx-text">Für jeden Bereich steht fest, wer übernimmt. Wenn Geschäftsführung, Kunden oder Prüfer fragen, hast du die Antwort.</p>
+      </div>
+      <div class="kx-tile">
+        <div class="kx-viz kx-meter" aria-hidden="true">
+          <div>Geklärt<span class="m1"></span></div>
+          <div>In Arbeit<span class="m2"></span></div>
+          <div>Offen<span class="m3"></span></div>
+        </div>
+        <h3 class="kx-h3">Offene Maßnahmen erkennen.</h3>
+        <p class="kx-text">Du siehst, was steht, was in Arbeit ist und was noch fehlt. Statt Bauchgefühl hast du einen Stand.</p>
       </div>
       <div class="kx-tile">
         <div class="kx-viz kx-prio" aria-hidden="true">
@@ -297,16 +319,8 @@
           <div><b>02</b>Meldewege festlegen</div>
           <div><b>03</b>Team informieren</div>
         </div>
-        <h3 class="kx-h3">Prioritäten statt Aktionismus.</h3>
-        <p class="kx-text">Die offenen Punkte zeigen dir, wo du anfängst. Du verlierst dich nicht in Details.</p>
-      </div>
-      <div class="kx-tile">
-        <div class="kx-viz kx-chat" aria-hidden="true">
-          <p class="them">Habt ihr einen Notfallplan?</p>
-          <p class="us">Ja. Hier ist er.</p>
-        </div>
-        <h3 class="kx-h3">Antworten statt Suche.</h3>
-        <p class="kx-text">Wenn Kunden, Partner oder Prüfer fragen, weißt du, was du sagen kannst.</p>
+        <h3 class="kx-h3">Nächste Schritte festlegen.</h3>
+        <p class="kx-text">Aus den offenen Punkten wird eine Reihenfolge. Du weißt, womit du anfängst – und was warten kann.</p>
       </div>
     </div>
   </div>
@@ -316,8 +330,8 @@
   <div class="kx-container kx-contents">
     <div>
       <p class="kx-label">Das steckt drin</p>
-      <h2 class="kx-h2">Acht Bereiche. Ohne ein einziges Fachwort.</h2>
-      <p class="kx-text">Jede Frage beantwortest du mit den Menschen, die es wissen. Was offen bleibt, wird dein nächster Schritt.</p>
+      <h2 class="kx-h2">Acht Bereiche, die du bei der Umsetzung klären musst.</h2>
+      <p class="kx-text">In klarer Sprache, damit du sie mit IT, Fachbereichen und Geschäftsführung gemeinsam durchgehen kannst. Was offen bleibt, wird dein nächster Schritt.</p>
     </div>
     <ul class="kx-items">
       <li><span class="kx-box" aria-hidden="true"></span>Wer ist zuständig, wenn etwas passiert?</li>
@@ -341,8 +355,12 @@
         <p>Nein. Du bekommst sie kostenlos und kannst dich jederzeit von unseren E-Mails abmelden.</p>
       </details>
       <details>
-        <summary>Brauche ich dafür Fachwissen?</summary>
-        <p>Nein. Die Fragen sind so formuliert, dass du sie mit deinem Team beantworten kannst – ohne Paragrafen oder Fachbegriffe.</p>
+        <summary>Für wen ist die Checkliste gedacht?</summary>
+        <p>Für alle, die NIS2 im Unternehmen koordinieren: IT-Leitung, NIS2-Projektverantwortliche und Informationssicherheitsbeauftragte – und für Geschäftsführungen, die sich einen Überblick verschaffen wollen.</p>
+      </details>
+      <details>
+        <summary>Betrifft NIS2 mein Unternehmen?</summary>
+        <p>Nicht automatisch. Ob ein Unternehmen unter NIS2 fällt, hängt unter anderem von Branche und Größe ab. Die Checkliste hilft bei der Umsetzung, wenn ihr betroffen seid oder euch vorbereiten wollt; die Betroffenheit selbst klärt sie nicht.</p>
       </details>
       <details>
         <summary>Ersetzt die Checkliste eine Beratung?</summary>
@@ -358,7 +376,7 @@
       <svg class="kx-route kx-route--wide" viewBox="640 0 960 1000" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false"><path d="M760 1150C760 870 835 783 1070 704C1264 639 1320 568 1301 390C1285 240 1447 135 1700 135" fill="none" stroke="#0E9DFD" stroke-width="190"/></svg>
       <svg class="kx-route kx-route--narrow" viewBox="0 0 360 180" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false"><path d="M70 230C88 150 150 128 214 108C280 88 300 52 400 46" fill="none" stroke="#0E9DFD" stroke-width="44"/></svg>
       <p class="kx-label">Dein Weg zu mehr Sicherheit.</p>
-      <h2 class="kx-h2">Ein Nachmittag. Danach weißt du, wo ihr steht.</h2>
+      <h2 class="kx-h2">Den Auftrag hast du. Den Überblick bekommst du hier.</h2>
       <p class="kx-text">Die Checkliste ist kostenlos und in Sekunden angefordert.</p>
       <a class="kx-button" href="#download">Checkliste erhalten</a>
     </div>

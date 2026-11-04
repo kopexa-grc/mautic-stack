@@ -7,11 +7,16 @@ route, Action Blue for actions. Mobile first.
 
 ![Preview](thumbnail.png)
 
+Audience: the person who has just been asked to coordinate NIS2 — IT
+leads, NIS2 project owners, information security officers; management in
+mid-sized companies second. Not people who only want to learn about NIS2:
+the copy speaks to implementing it, the form asks for the role.
+
 Built for conversion:
 
-- **One offer, one field.** The hero asks only for the email address,
-  next to the button (stacked on phones). Ask for name and company later
-  with Mautic's progressive profiling instead of up front.
+- **One offer, two fields.** Role (select) and email next to the button
+  (stacked on phones): the role qualifies the lead at almost no cost. Ask
+  for name and company later with Mautic's progressive profiling.
 - **Benefit before features.** Short headline, the outcome in plain
   language, no technical terms ("Nach einem Nachmittag weißt du es").
 - **The offer is visible.** An art-directed preview of the checklist with
@@ -27,15 +32,20 @@ Sections are independent: delete, duplicate or reorder them in the builder.
 ## Setting up the download
 
 1. Upload the PDF as an **asset** (*Components → Assets*).
-2. Create a **form** with the field *Email* (required; placeholder
-   „Deine geschäftliche E-Mail“) and a submit button „Checkliste erhalten“.
+2. Create a **form** with a select *Rolle* (IT-Leitung, NIS2-Projekt-
+   verantwortung / ISB, Geschäftsführung, Beratung, Andere; first option
+   „Deine Rolle“ as placeholder, mapped to a contact field), the field
+   *Email* (required; placeholder „Deine geschäftliche E-Mail“) and a
+   submit button „Checkliste erhalten“.
    Action: *Download an asset* or *Send email to contact* with the asset
    link; post-submit message, e.g. „Danke! Die Checkliste ist unterwegs zu
    dir.“ Optional: progressive profiling for first name and company.
 3. Create the landing page with this theme and drag the builder's *Form*
    block onto the dashed preview in the hero (it replaces the preview).
-4. Optional: lead scoring with a point action *Downloads an asset* or
-   *Submits a form* and a follow-up campaign on the form's segment.
+4. Funnel: checklist → follow-up on measures, evidence, risks and
+   responsibilities → Kopexa demo. Score the download (point action
+   *Downloads an asset*), weight the role (e.g. a dynamic segment on
+   IT-Leitung / NIS2 owners) and start the follow-up campaign from it.
 
 The texts are examples written to the brand's rules (informal *du*,
 problem line above the solution, no promises, no invented figures or
