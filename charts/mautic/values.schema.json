@@ -393,6 +393,29 @@
             },
             "systemTheme": {
               "type": "string"
+            },
+            "linkRequest": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "locale": {
+                  "type": "string",
+                  "pattern": "^[a-z]{2}(_[A-Z]{2})?$"
+                },
+                "email": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "buttonColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-Fa-f]{6}$"
+                },
+                "redirect": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         },

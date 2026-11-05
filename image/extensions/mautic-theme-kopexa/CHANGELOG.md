@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 – 2026-11-05
+
+- System pages: styles for the link request of kopexa/mautic-preferences-center
+  (`/email/preferences`: email field, button, error).
+
 ## 0.4.0 – 2026-11-05
 
 - Footer links in German with their own text: „Abmelden oder Themen wählen“ ({unsubscribe_url}) and „Im Browser ansehen“ ({webview_url}). Mautic's {unsubscribe_text} / {webview_text} render English default texts unless configured; the QA now rejects them.

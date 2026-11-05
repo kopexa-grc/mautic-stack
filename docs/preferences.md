@@ -101,6 +101,24 @@ not listed are left as they are set in Mautic. Renaming a listed topic in
 Mautic makes the next start create it again under its old name; rename it
 in the values instead.
 
+## Link by email (website, no email at hand)
+
+`https://go.kopexa.com/email/preferences` asks for an email address and
+sends a personal link to the preference page. Use it as the "E-Mail-
+Einstellungen" link on kopexa.com. `/einstellungen` without a personal link
+leads there too.
+
+- Same answer for every address („Wenn diese Adresse bei uns eingetragen
+  ist …“); unknown addresses get no email. At most 3 requests per address
+  and 10 per IP within an hour.
+- The email is the Mautic email *Preferences center: link* (Channels →
+  Emails), created on the first request in German with a button in Action
+  Blue. Edit it there (e.g. in the Kopexa design via MCP), or point
+  `preferenceCenter.linkRequest.email` at another email with
+  `{unsubscribe_url}`.
+- It is sent like a requested service email, also to people who
+  unsubscribed from all emails.
+
 ## Webhooks
 
 Other systems (CRM, product, data warehouse) learn about changes through

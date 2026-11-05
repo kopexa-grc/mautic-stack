@@ -10,6 +10,7 @@ mautic:
     hideOtherTopics: true
     page: {alias: einstellungen, title: E-Mail-Einstellungen, updateContent: false}
     systemTheme: kopexa
+    linkRequest: {locale: de, buttonColor: '#006CB8', redirect: true}
     frequency: false
   siteUrl: https://mautic.example.com
   trustedHosts: ['^mautic\.example\.com$']

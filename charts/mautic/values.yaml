@@ -227,6 +227,7 @@ mautic:
   #   page: {alias: einstellungen, title: E-Mail-Einstellungen}
   #   frequency: false   # also offer "fewer emails"
   #   pauseDates: false  # also offer a pause
+  #   linkRequest: {email: My link email}  # own email for /email/preferences (default: the plugin's)
   preferenceCenter: {}
 
   # -- Any other Mautic parameter (merged last, wins), e.g.

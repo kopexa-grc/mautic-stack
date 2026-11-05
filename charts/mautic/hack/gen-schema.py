@@ -80,7 +80,12 @@ OVERRIDES = {
             "title": {"type": "string", "minLength": 1}, "alias": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
             "theme": {"type": "string"}, "language": {"type": "string"}, "updateContent": {"type": "boolean"}}},
         "frequency": {"type": "boolean"}, "pauseDates": {"type": "boolean"},
-        "systemTheme": {"type": "string"}}},
+        "systemTheme": {"type": "string"},
+        "linkRequest": {"type": "object", "additionalProperties": False, "properties": {
+            "locale": {"type": "string", "pattern": "^[a-z]{2}(_[A-Z]{2})?$"},
+            "email": {"type": ["string", "integer"]},
+            "buttonColor": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+            "redirect": {"type": "boolean"}}}}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
     "valkey.maxmemory": {"type": "string", "pattern": "^[0-9]+(b|kb|mb|gb)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},

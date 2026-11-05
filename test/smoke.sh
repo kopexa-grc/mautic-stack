@@ -209,6 +209,9 @@ removed() { docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SEL
 [[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$pref_jar" -c "$pref_jar" -X POST "$base/email/unsubscribe/$pref_hash" "${fields[@]}")" == 302 ]] \
   && [[ "$(removed "$webinar_cat")" == 1 ]] && [[ "$(removed "$intern_cat")" == 0 ]] \
   && pass "switching a topic off is saved for \"Webinare & Events\" only; the hidden topic stays on" || fail "saving preferences"
+[[ "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$base/einstellungen")" == "302 $base/email/preferences" ]] \
+  && curl -s "$base/email/preferences" | grep -q 'Gib deine E-Mail-Adresse ein' \
+  && pass "/einstellungen without a personal link leads to the link request (German, Kopexa layout)" || fail "link request"
 
 echo "OAuth 2.1 (keys and issuer from the environment; the bundle tests the protocol)"
 b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }

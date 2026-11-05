@@ -445,7 +445,8 @@ function init(array $params, array $environment): void
 
     // Email preference center from the Helm values (mautic.preferenceCenter),
     // set up by kopexa/mautic-preferences-center with the Kopexa themes as
-    // defaults: the page (theme kopexa-preferences) and the system pages.
+    // defaults: the page (theme kopexa-preferences), the system pages and the
+    // link request (/email/preferences) in German with the Kopexa button colour.
     $preferences = trim((string) env('MAUTIC_PREFERENCE_CENTER', ''));
     if ('' !== $preferences && '{}' !== $preferences) {
         $declared = json_decode($preferences, true);
@@ -455,6 +456,8 @@ function init(array $params, array $environment): void
         $declared['page'] = (is_array($declared['page'] ?? null) ? $declared['page'] : [])
             + ['alias' => 'einstellungen', 'title' => 'E-Mail-Einstellungen', 'theme' => 'kopexa-preferences'];
         $declared['systemTheme'] ??= 'kopexa';
+        $declared['linkRequest'] = (is_array($declared['linkRequest'] ?? null) ? $declared['linkRequest'] : [])
+            + ['locale' => 'de', 'buttonColor' => '#006CB8'];
         logmsg('syncing the email preference center');
         if (0 !== $rc = console(['preferences-center:sync', '--json='.json_encode($declared, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)], $environment)) {
             fail('preference center sync failed', $rc);
