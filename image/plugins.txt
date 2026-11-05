@@ -21,4 +21,4 @@ symfony/mailjet-mailer:7.4.*
 kopexa/mautic-oauth-bundle:0.4.1
 kopexa/mautic-mcp-bundle:0.8.0
 kopexa/mautic-postal-bundle:0.3.0
-kopexa/mautic-preferences-center:0.2.0
+kopexa/mautic-preferences-center:0.2.1
