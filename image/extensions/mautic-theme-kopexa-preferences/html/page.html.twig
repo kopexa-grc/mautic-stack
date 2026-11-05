@@ -70,6 +70,9 @@
   .kx-all .pref-channelfrequency { grid-column: 1; grid-row: 3; margin-top: 14px; }
   .kx-all .pref-channelfrequency table, .kx-all .pref-channelfrequency td { border: 0; padding: 0; margin: 0; border-collapse: collapse; }
   .kx-all .pref-channelfrequency label { display: none; }
+  /* Mautic's sample fields (frequency, pause) in the builder preview without a contact:
+     only fields Mautic really renders carry data-contact-frequency / data-contact-pause-dates */
+  .kx-all [id^="frequency_"] > div:not([data-contact-frequency]):not([data-contact-pause-dates]) { display: none; }
   .kx-all-label { grid-column: 2; grid-row: 3; margin-top: 14px; font-weight: 600; color: var(--kx-navy); cursor: pointer; padding-top: 2px; }
   .kx-all-label span { display: block; font-weight: 400; color: var(--kx-muted); font-size: 15px; }
 

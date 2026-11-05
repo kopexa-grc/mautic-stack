@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 – 2026-11-05
+
+- Builder preview: Mautic's sample fields for frequency and pause (shown without
+  a contact, whatever the settings) are hidden; the real page is unchanged.
+
 ## 0.2.0 – 2026-11-05
 
 - Topic name and text from kopexa/mautic-preferences-center (`.pref-topic-name`,
