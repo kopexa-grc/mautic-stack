@@ -91,7 +91,7 @@ class PreferenceCenterSync
             'title'         => trim((string) ($page['title'] ?? 'E-Mail-Einstellungen')),
             'alias'         => trim((string) ($page['alias'] ?? 'einstellungen')),
             'theme'         => trim((string) ($page['theme'] ?? 'kopexa-preferences')),
-            'language'      => trim((string) ($page['language'] ?? 'de')),
+            'language'      => trim((string) ($page['language'] ?? '')),
             'updateContent' => true === ($page['updateContent'] ?? false),
         ];
         if (1 !== preg_match('/^[a-z0-9][a-z0-9-]*$/', $page['alias'])) {
@@ -177,7 +177,11 @@ class PreferenceCenterSync
         if ($isNew) {
             $page->setTitle($declared['title']);
             $page->setAlias($declared['alias']);
-            $page->setLanguage($declared['language']);
+            // Only when asked for: Mautic creates translations/<lang> for a language
+            // that is not installed (read-only in the image without a volume).
+            if ('' !== $declared['language']) {
+                $page->setLanguage($declared['language']);
+            }
         }
         $themeChanged = !$isNew && $page->getTemplate() !== $declared['theme'];
         if ($isNew || $themeChanged) {
