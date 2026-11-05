@@ -212,6 +212,21 @@ mautic:
   #       asset:assets: [full]
   roles: []
 
+  # -- Email preference center (docs/preferences.md), set up by the init
+  # container: topics people switch on and off (Mautic categories, matched
+  # by name; others are not touched), the preference page (theme
+  # kopexa-preferences, created once, then edited in Mautic) and Mautic's
+  # unsubscribe settings. Empty: Mautic's defaults (unsubscribe = all).
+  #   topics:
+  #     - name: Webinare & Events
+  #       description: Einladungen und Erinnerungen zu Online-Terminen
+  #     - name: Ressourcen & Downloads
+  #     - name: Produkt-Updates
+  #   page: {alias: einstellungen, title: E-Mail-Einstellungen}
+  #   frequency: false   # also offer "fewer emails"
+  #   pauseDates: false  # also offer a pause
+  preferenceCenter: {}
+
   # -- Any other Mautic parameter (merged last, wins), e.g.
   #   { "default_timezone": "Europe/Berlin", "locale": "de" }
   configParameters: {}

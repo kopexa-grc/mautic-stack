@@ -443,6 +443,15 @@ function init(array $params, array $environment): void
         }
     }
 
+    // Email preference center from the Helm values (mautic.preferenceCenter).
+    $preferences = trim((string) env('MAUTIC_PREFERENCE_CENTER', ''));
+    if ('' !== $preferences && '{}' !== $preferences) {
+        logmsg('syncing the email preference center');
+        if (0 !== $rc = console(['kopexa:preferences:sync'], $environment)) {
+            fail('preference center sync failed', $rc);
+        }
+    }
+
     // The SAML default role by name must exist now (declared in mautic.roles
     // or created in Mautic): fail the init rather than start SSO without it.
     $name = env('MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME');

@@ -131,7 +131,9 @@ upgrades), [docs/backup.md](docs/backup.md) (backup and restore),
 [docs/oauth.md](docs/oauth.md) (OAuth 2.1 authorization server),
 [docs/extensions.md](docs/extensions.md) (our extensions: repositories and releases),
 [docs/postal.md](docs/postal.md) (sending via Postal, bounce webhooks on
-`/mailer/callback`) and [docs/sso.md](docs/sso.md) (SAML single sign-on).
+`/mailer/callback`), [docs/preferences.md](docs/preferences.md) (email
+preferences: topics instead of unsubscribe-all) and [docs/sso.md](docs/sso.md)
+(SAML single sign-on).
 
 ## How the chart is laid out
 

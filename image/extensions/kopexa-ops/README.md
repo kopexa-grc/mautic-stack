@@ -7,6 +7,8 @@ published.
 | Command | Purpose |
 |---|---|
 | `kopexa:roles:sync [--json=…] [--dry-run]` | Create or update the roles in `MAUTIC_ROLES` (Helm: `mautic.roles`), matched by name, through Mautic's `RoleModel`. Run by `init` after the migrations. See [docs/sso.md](../../../docs/sso.md#roles). |
+| `kopexa:preferences:sync [--json=…] [--dry-run]` | Email preference center from `MAUTIC_PREFERENCE_CENTER` (Helm: `mautic.preferenceCenter`): topics (global categories), the preference page (theme `kopexa-preferences`), Mautic's unsubscribe settings. Run by `init` after the roles. See [docs/preferences.md](../../../docs/preferences.md). |
+| `kopexa:privacy:strip-third-party-fonts [--dry-run]` | Removes the Google Fonts links Mautic wrote into stored pages, emails and dynamic content (`data-source="mautic"` only). Run by `init`. |
 
 Behaviour of the role sync:
 

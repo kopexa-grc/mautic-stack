@@ -65,6 +65,8 @@ env+=(-e MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY="$(openssl rsa -in "$postal_key" -pubo
 oauth_key="$(mktemp)"; openssl genrsa -out "$oauth_key" 2048 2>/dev/null
 env+=(-e MAUTIC_OAUTH_PRIVATE_KEY="$(cat "$oauth_key")" -e MAUTIC_OAUTH_ENCRYPTION_KEY="$(openssl rand -hex 32)")
 env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
+# Email preference center (Helm: mautic.preferenceCenter).
+env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","description":"Einladungen zu Online-Terminen"},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}],"page":{"alias":"einstellungen"}}')
 secret="$(mktemp)"; echo mautic >"$secret"; chmod 644 "$secret"
 env+=(-v "$secret:/run/secrets/db-password:ro")
 
@@ -78,9 +80,11 @@ docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init \
 pass "init completed"
 
 echo "init is idempotent"
-docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init >/dev/null 2>&1 \
-  || fail "second init failed"
+init2="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)" \
+  || { echo "$init2" | tail -20; fail "second init failed"; }
 pass "second init completed"
+grep -q 'page "einstellungen": unchanged' <<<"$init2" && grep -q 'settings: unchanged' <<<"$init2" \
+  && pass "preference center: second init changes nothing (topics, page, settings)" || { echo "$init2" | grep -iE 'topic|page|settings|prefer'; fail "preference center sync not idempotent"; }
 
 docker run -d --name "$run_id-web" --network "$net" "${hardening[@]}" "${env[@]}" \
   -p 127.0.0.1::8080 "$IMG" web >/dev/null
@@ -181,6 +185,26 @@ wrong_key="$(mktemp)"; openssl genrsa -out "$wrong_key" 2048 2>/dev/null
   && pass "signed MessageBounced accepted" || { cat /tmp/postal-resp; fail "signed bounce"; }
 dnc="$(api "$base/api/contacts/$cid" | jq -r '.contact.doNotContact[0].reason // empty')"
 [[ "$dnc" == 2 ]] && pass "contact marked Do Not Contact: bounced" || fail "contact not marked bounced (reason=$dnc)"
+echo "Email preference center (mautic.preferenceCenter, theme kopexa-preferences)"
+webinar_cat="$(api "$base/api/categories?search=Webinare" | jq -r '[.categories[] | select(.title == "Webinare & Events")][0].id')"
+pref_cid="$(api -X POST "$base/api/contacts/new" -d email=prefs@example.com | jq -r .contact.id)"
+pref_eid="$(api -X POST "$base/api/emails/new" -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Webinar\",\"subject\":\"Webinar\",\"emailType\":\"template\",\"isPublished\":true,\"category\":$webinar_cat,\"template\":\"kopexa\",\"customHtml\":\"<html><body><a href='{unsubscribe_url}'>Abmelden</a></body></html>\"}" | jq -r .email.id)"
+api -X POST "$base/api/emails/$pref_eid/contact/$pref_cid/send" >/dev/null
+pref_hash="$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT tracking_hash FROM email_stats WHERE lead_id = $pref_cid ORDER BY id DESC LIMIT 1" 2>/dev/null)"
+pref_jar="$(mktemp)"
+curl -s -c "$pref_jar" -b "$pref_jar" "$base/email/unsubscribe/$pref_hash" -o /tmp/prefs.html
+grep -q 'Du entscheidest, was in deinem Postfach landet' /tmp/prefs.html && grep -q 'name="lead_contact_frequency_rules"' /tmp/prefs.html \
+  && [[ "$(grep -c '<html' /tmp/prefs.html)" == 1 ]] && ! grep -q 'fonts.googleapis.com' /tmp/prefs.html \
+  && pass "unsubscribe link opens the Kopexa preference page (Mautic's form inside, one document, no Google Fonts)" || { head -c 600 /tmp/prefs.html; fail "preference page"; }
+pref_token="$(sed -n 's/.*name="lead_contact_frequency_rules\[_token\]"[^>]*value="\([^"]*\)".*/\1/p;s/.*value="\([^"]*\)"[^>]*name="lead_contact_frequency_rules\[_token\]".*/\1/p' /tmp/prefs.html | head -1)"
+other_cats="$(api "$base/api/categories?limit=100" | jq -r --argjson w "$webinar_cat" '[.categories[] | select(.bundle == "global" and .id != $w) | .id] | .[]')"
+fields=(--data-urlencode "lead_contact_frequency_rules[_token]=$pref_token" --data-urlencode "lead_contact_frequency_rules[lead_channels][subscribed_channels][0]=email")
+for c in $other_cats; do fields+=(--data-urlencode "lead_contact_frequency_rules[global_categories][]=$c"); done
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$pref_jar" -c "$pref_jar" -X POST "$base/email/unsubscribe/$pref_hash" "${fields[@]}")" == 302 ]] \
+  && [[ "$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT manually_removed FROM lead_categories WHERE lead_id = $pref_cid AND category_id = $webinar_cat" 2>/dev/null)" == 1 ]] \
+  && pass "switching a topic off is saved: contact unsubscribed from \"Webinare & Events\" only" || fail "saving preferences"
+
 echo "OAuth 2.1 (keys and issuer from the environment; the bundle tests the protocol)"
 b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }
 b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
