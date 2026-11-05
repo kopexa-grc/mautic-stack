@@ -3,9 +3,13 @@ mautic:
   preferenceCenter:
     topics:
       - name: Webinare & Events
-        description: Einladungen und Erinnerungen zu Online-Terminen
+        text: Einladungen und Erinnerungen zu Online-Terminen
+      - name: Intern
+        visible: false
       - name: Produkt-Updates
-    page: {alias: einstellungen, title: E-Mail-Einstellungen}
+    hideOtherTopics: true
+    page: {alias: einstellungen, title: E-Mail-Einstellungen, updateContent: false}
+    systemTheme: kopexa
     frequency: false
   siteUrl: https://mautic.example.com
   trustedHosts: ['^mautic\.example\.com$']

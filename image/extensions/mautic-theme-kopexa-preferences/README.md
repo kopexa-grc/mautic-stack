@@ -23,6 +23,11 @@ from the base theme (`html/message.html.twig`).
   nor as segment emails. Every marketing email needs its category.
 - **All emails** is Mautic's email channel: switched off, the contact is
   *Do Not Contact – unsubscribed*.
+- With [kopexa/mautic-preferences-center](https://github.com/kopexa-grc/mautic-preferences-center)
+  installed (it is in the Kopexa image), each topic shows its text under
+  the name (`.pref-topic-name`, `.pref-topic-text`), and only the topics
+  marked *Show as topic* appear, in their order. Without it the theme shows
+  Mautic's plain list.
 
 ## Setup
 
@@ -35,7 +40,7 @@ from the base theme (`html/message.html.twig`).
    pages of emails without a theme look the same.
 
 In the Kopexa Mautic image steps 1–3 come from the Helm values
-(`mautic.preferenceCenter`).
+(`mautic.preferenceCenter`, set up by the plugin's `preferences-center:sync`).
 
 The page only works when opened from an email link (Mautic needs to know
 the contact). Pages built with GrapesJS store their HTML: after a theme

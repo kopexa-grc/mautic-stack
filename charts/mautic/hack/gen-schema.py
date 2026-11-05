@@ -69,7 +69,18 @@ OVERRIDES = {
                             "propertyNames": {"pattern": "^[a-z0-9_]+:[a-z0-9_]+$"},
                             "additionalProperties": {"type": "array", "minItems": 1, "items": {"type": "string"}}},
         }}},
-    "mautic.preferenceCenter": {"type": "object", "additionalProperties": False, "properties": {"topics": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": False, "required": ["name"], "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 191}, "description": {"type": "string"}}}}, "page": {"type": "object", "additionalProperties": False, "properties": {"title": {"type": "string", "minLength": 1}, "alias": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}, "theme": {"type": "string", "minLength": 1}, "language": {"type": "string", "minLength": 2}, "updateContent": {"type": "boolean"}}}, "frequency": {"type": "boolean"}, "pauseDates": {"type": "boolean"}, "systemTheme": {"type": "string"}}},
+    "mautic.preferenceCenter": {"type": "object", "additionalProperties": False, "properties": {
+        "topics": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["name"],
+            "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 191},
+                           "text": {"type": "string", "maxLength": 1000},
+                           "visible": {"type": "boolean"}}}},
+        "hideOtherTopics": {"type": "boolean"},
+        "page": {"type": "object", "additionalProperties": False, "properties": {
+            "title": {"type": "string", "minLength": 1}, "alias": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+            "theme": {"type": "string"}, "language": {"type": "string"}, "updateContent": {"type": "boolean"}}},
+        "frequency": {"type": "boolean"}, "pauseDates": {"type": "boolean"},
+        "systemTheme": {"type": "string"}}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
     "valkey.maxmemory": {"type": "string", "pattern": "^[0-9]+(b|kb|mb|gb)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},

@@ -443,11 +443,20 @@ function init(array $params, array $environment): void
         }
     }
 
-    // Email preference center from the Helm values (mautic.preferenceCenter).
+    // Email preference center from the Helm values (mautic.preferenceCenter),
+    // set up by kopexa/mautic-preferences-center with the Kopexa themes as
+    // defaults: the page (theme kopexa-preferences) and the system pages.
     $preferences = trim((string) env('MAUTIC_PREFERENCE_CENTER', ''));
     if ('' !== $preferences && '{}' !== $preferences) {
+        $declared = json_decode($preferences, true);
+        if (!is_array($declared) || array_is_list($declared)) {
+            fail('MAUTIC_PREFERENCE_CENTER must be a JSON object');
+        }
+        $declared['page'] = (is_array($declared['page'] ?? null) ? $declared['page'] : [])
+            + ['alias' => 'einstellungen', 'title' => 'E-Mail-Einstellungen', 'theme' => 'kopexa-preferences'];
+        $declared['systemTheme'] ??= 'kopexa';
         logmsg('syncing the email preference center');
-        if (0 !== $rc = console(['kopexa:preferences:sync'], $environment)) {
+        if (0 !== $rc = console(['preferences-center:sync', '--json='.json_encode($declared, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)], $environment)) {
             fail('preference center sync failed', $rc);
         }
     }

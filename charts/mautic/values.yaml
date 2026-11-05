@@ -213,15 +213,17 @@ mautic:
   roles: []
 
   # -- Email preference center (docs/preferences.md), set up by the init
-  # container: topics people switch on and off (Mautic categories, matched
-  # by name; others are not touched), the preference page (theme
-  # kopexa-preferences, created once, then edited in Mautic) and Mautic's
-  # unsubscribe settings. Empty: Mautic's defaults (unsubscribe = all).
+  # container with kopexa/mautic-preferences-center: topics people switch on
+  # and off (Mautic categories, matched by name), shown in this order with
+  # their text; the preference page (theme kopexa-preferences, created once,
+  # then edited in Mautic) and Mautic's unsubscribe settings. Empty: Mautic's
+  # defaults (unsubscribe = all emails).
   #   topics:
   #     - name: Webinare & Events
-  #       description: Einladungen und Erinnerungen zu Online-Terminen
+  #       text: Einladungen und Erinnerungen zu Online-Terminen
   #     - name: Ressourcen & Downloads
   #     - name: Produkt-Updates
+  #   hideOtherTopics: true  # other categories not on the page
   #   page: {alias: einstellungen, title: E-Mail-Einstellungen}
   #   frequency: false   # also offer "fewer emails"
   #   pauseDates: false  # also offer a pause

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 – 2026-11-05
+
+- Topic name and text from kopexa/mautic-preferences-center (`.pref-topic-name`,
+  `.pref-topic-text`); switch aligned with the topic name.
+
 ## 0.1.0 – 2026-11-05
 
 - First version: Mautic preference center in the Kopexa design — topics

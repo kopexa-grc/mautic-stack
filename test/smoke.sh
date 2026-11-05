@@ -66,7 +66,8 @@ oauth_key="$(mktemp)"; openssl genrsa -out "$oauth_key" 2048 2>/dev/null
 env+=(-e MAUTIC_OAUTH_PRIVATE_KEY="$(cat "$oauth_key")" -e MAUTIC_OAUTH_ENCRYPTION_KEY="$(openssl rand -hex 32)")
 env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
 # Email preference center (Helm: mautic.preferenceCenter).
-env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","description":"Einladungen zu Online-Terminen"},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}],"page":{"alias":"einstellungen"}}')
+# Set up by kopexa/mautic-preferences-center; page and system pages in the Kopexa themes.
+env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","text":"Einladungen zu Online-Terminen"},{"name":"Intern","visible":false},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}],"page":{"alias":"einstellungen"}}')
 secret="$(mktemp)"; echo mautic >"$secret"; chmod 644 "$secret"
 env+=(-v "$secret:/run/secrets/db-password:ro")
 
@@ -83,7 +84,7 @@ echo "init is idempotent"
 init2="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)" \
   || { echo "$init2" | tail -20; fail "second init failed"; }
 pass "second init completed"
-grep -q 'page "einstellungen": unchanged' <<<"$init2" && grep -q 'settings: unchanged' <<<"$init2" \
+grep -q 'topic "Webinare & Events": unchanged' <<<"$init2" && grep -q 'page "einstellungen": unchanged' <<<"$init2" && grep -q 'settings: unchanged' <<<"$init2" \
   && pass "preference center: second init changes nothing (topics, page, settings)" || { echo "$init2" | grep -iE 'topic|page|settings|prefer'; fail "preference center sync not idempotent"; }
 
 docker run -d --name "$run_id-web" --network "$net" "${hardening[@]}" "${env[@]}" \
@@ -197,13 +198,17 @@ curl -s -c "$pref_jar" -b "$pref_jar" "$base/email/unsubscribe/$pref_hash" -o /t
 grep -q 'Du entscheidest, was in deinem Postfach landet' /tmp/prefs.html && grep -q 'name="lead_contact_frequency_rules"' /tmp/prefs.html \
   && [[ "$(grep -c '<html' /tmp/prefs.html)" == 1 ]] && ! grep -q 'fonts.googleapis.com' /tmp/prefs.html \
   && pass "unsubscribe link opens the Kopexa preference page (Mautic's form inside, one document, no Google Fonts)" || { head -c 600 /tmp/prefs.html; fail "preference page"; }
+grep -q '<span class="pref-topic-text">Einladungen zu Online-Terminen</span>' /tmp/prefs.html && ! grep -q 'pref-topic-name">Intern<' /tmp/prefs.html \
+  && pass "topics with their text; the hidden topic is not on the page (kopexa/mautic-preferences-center)" || fail "topics on the page"
 pref_token="$(perl -0ne 'print $1 if /<input\b[^>]*name="lead_contact_frequency_rules\[_token\]"[^>]*>/ and $& =~ /\bvalue="([^"]*)"/' /tmp/prefs.html)"  # the tag spans lines
-other_cats="$(api "$base/api/categories?limit=100" | jq -r --argjson w "$webinar_cat" '[.categories[] | select(.bundle == "global" and .id != $w) | .id] | .[]')"
+cat_id() { api "$base/api/categories?limit=100" | jq -r --arg t "$1" '[.categories[] | select(.title == $t)][0].id'; }
+intern_cat="$(cat_id Intern)"
 fields=(--data-urlencode "lead_contact_frequency_rules[_token]=$pref_token" --data-urlencode "lead_contact_frequency_rules[lead_channels][subscribed_channels][0]=email")
-for c in $other_cats; do fields+=(--data-urlencode "lead_contact_frequency_rules[global_categories][]=$c"); done
+for t in 'Ressourcen & Downloads' 'Produkt-Updates'; do fields+=(--data-urlencode "lead_contact_frequency_rules[global_categories][]=$(cat_id "$t")"); done
+removed() { docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT COALESCE(MAX(manually_removed), 0) FROM lead_categories WHERE lead_id = $pref_cid AND category_id = $1" 2>/dev/null; }
 [[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$pref_jar" -c "$pref_jar" -X POST "$base/email/unsubscribe/$pref_hash" "${fields[@]}")" == 302 ]] \
-  && [[ "$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT manually_removed FROM lead_categories WHERE lead_id = $pref_cid AND category_id = $webinar_cat" 2>/dev/null)" == 1 ]] \
-  && pass "switching a topic off is saved: contact unsubscribed from \"Webinare & Events\" only" || fail "saving preferences"
+  && [[ "$(removed "$webinar_cat")" == 1 ]] && [[ "$(removed "$intern_cat")" == 0 ]] \
+  && pass "switching a topic off is saved for \"Webinare & Events\" only; the hidden topic stays on" || fail "saving preferences"
 
 echo "OAuth 2.1 (keys and issuer from the environment; the bundle tests the protocol)"
 b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }

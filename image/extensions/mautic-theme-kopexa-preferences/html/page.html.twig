@@ -54,8 +54,11 @@
   /* topics: Mautic's category list ({categorylist}) as switch rows */
   .global-categories > div:first-child { display: none; }
   .global-categories { margin-top: 12px; display: flex; flex-direction: column; }
-  .global-categories > div[id^="category-"] { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--kx-line); }
-  .global-categories label { font-weight: 600; color: var(--kx-navy); cursor: pointer; flex: 1; }
+  .global-categories > div[id^="category-"] { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-top: 1px solid var(--kx-line); }
+  .global-categories label { font-weight: 600; color: var(--kx-navy); cursor: pointer; flex: 1; padding-top: 2px; }
+  /* name and text per topic (kopexa/mautic-preferences-center) */
+  .global-categories .pref-topic-name { display: block; }
+  .global-categories .pref-topic-text { display: block; font-weight: 400; color: var(--kx-muted); font-size: 15px; }
   .kx-form input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; margin: 0; width: 46px; height: 28px; border-radius: var(--kx-r-panel); background: var(--kx-supporting); position: relative; cursor: pointer; transition: background .15s; }
   .kx-form input[type="checkbox"]::after { content: ''; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: var(--kx-r-panel); background: var(--kx-white); transition: transform .15s; }
   .kx-form input[type="checkbox"]:checked { background: var(--kx-action); }

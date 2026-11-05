@@ -39,6 +39,23 @@ Topics are not segments: a segment decides who is targeted, a topic
 decides who does not want it. Mautic can also show segments on the page;
 this setup does not, so nobody leaves a segment by accident.
 
+## The plugin
+
+Topics, the preference page and the webhooks come from
+[kopexa/mautic-preferences-center](https://github.com/kopexa-grc/mautic-preferences-center),
+a generic Mautic plugin (in the image, `image/plugins.txt`). It adds:
+
+- per category *Show as topic*, *Position* and *Text for contacts*
+  (Components → Categories → edit, section *Preference center*; also the
+  categories API, field `preferencesCenter`);
+- hidden topics keep each contact's choice when the page is saved (Mautic
+  alone would switch every topic off that is not on the page);
+- the webhook event *Contact email preferences changed*;
+- `preferences-center:sync`, which the init container runs with the Helm
+  values.
+
+The design stays in the theme `kopexa-preferences` (this repository).
+
 ## Setup with the Helm chart
 
 ```yaml
@@ -46,39 +63,62 @@ mautic:
   preferenceCenter:
     topics:
       - name: Webinare & Events
-        description: Einladungen und Erinnerungen zu Online-Terminen
+        text: Einladungen und Erinnerungen zu Online-Terminen
       - name: Ressourcen & Downloads
-        description: Neue Checklisten, Leitfäden und Vorlagen
+        text: Neue Checklisten, Leitfäden und Vorlagen
       - name: Produkt-Updates
-        description: Neue Funktionen und Verbesserungen in Kopexa
-    page: {alias: einstellungen, title: E-Mail-Einstellungen}
-    # page.language: only an installed Mautic language (default: none)
+        text: Neue Funktionen und Verbesserungen in Kopexa
+    hideOtherTopics: true   # other categories are not on the page
+    # page: {alias: einstellungen, title: E-Mail-Einstellungen}   # the defaults
     # frequency: true    # also offer "fewer emails"
     # pauseDates: true   # also offer a pause
 ```
 
-At every start the init container (`kopexa:preferences:sync`):
+At every start the init container runs `preferences-center:sync` with these
+values plus the image defaults (page `einstellungen` in the theme
+`kopexa-preferences`, system pages in the theme `kopexa`):
 
-1. creates missing topics (matched by name; descriptions follow the values;
-   other categories are not touched, removed topics are not deleted);
-2. creates the preference page once from the theme (`page.alias`, default
-   `einstellungen`), marks it as preference center and publishes it. After
-   that the page is edited in Mautic; set `page.updateContent: true` once
-   to re-create its content from the theme (e.g. after a theme update —
-   pages built with the builder keep their stored HTML);
-3. sets Mautic's unsubscribe settings: show the preferences with the
-   topics (not segments), the page as default preference center for all
-   emails, and the Kopexa theme for the system pages (unsubscribed,
-   re-subscribed).
+1. topics: global categories matched by name, missing ones created; shown
+   in the declared order with their text (`visible: false` hides one);
+   `hideOtherTopics` hides every other category from the page. Nothing is
+   deleted;
+2. the preference page: created once from the theme, marked as preference
+   center and published. After that it is edited in Mautic; set
+   `page.updateContent: true` once to re-create its content from the theme
+   (e.g. after a theme update — pages built with the builder keep their
+   stored HTML);
+3. Mautic's unsubscribe settings: show the preferences with the topics
+   (not segments), the page as default preference center for all emails,
+   the Kopexa theme for the system pages.
 
 Nothing is written when everything matches (`unchanged` in the log).
 Invalid values stop the init with a list of errors.
 
-Without the chart: create the categories, a landing page with the theme
-*Kopexa · E-Mail-Einstellungen* marked as preference center, and set
-*Configuration → Email Settings → Unsubscribe settings* (show contact
-preferences and categories, default preference center) and *Theme
-Settings → default theme Kopexa*.
+**Topics in Helm and in Mautic.** Settings changed in Mautic (text,
+position, shown) are set back to the values at the next start for the
+topics listed there. Keep a topic either in the values or in Mautic: topics
+not listed are left as they are set in Mautic. Renaming a listed topic in
+Mautic makes the next start create it again under its old name; rename it
+in the values instead.
+
+## Webhooks
+
+Other systems (CRM, product, data warehouse) learn about changes through
+Mautic's webhooks: *Settings → Webhooks → New*, event *Contact email
+preferences changed*, the receiver's URL and a secret. One message per
+contact with the changed topics or all-emails state, the source
+(preference page, one-click unsubscribe, re-subscribe, admin, API) and the
+current state; signed (`Webhook-Signature`, HMAC-SHA256 with the secret).
+Format and verification: see the plugin's README.
+
+A receiver in the cluster has a private address, which Mautic refuses
+unless it is allowed:
+
+```yaml
+mautic:
+  configParameters:
+    webhook_allowed_private_addresses: [crm.internal.svc.cluster.local]
+```
 
 ## Texts
 
@@ -113,6 +153,9 @@ init removes those Mautic-injected links
 `test/smoke.sh` (section *Email preference center*): the init sets up the
 declared topics and page and changes nothing the second time; an email with
 a topic is sent, its unsubscribe link opens the Kopexa page (one document,
-no Google Fonts), switching one topic off is saved for that topic only. The
+no Google Fonts) with the topic texts and without the hidden topic;
+switching one topic off is saved for that topic only, the hidden topic
+stays on. The plugin's own functional tests cover the category form, the
+API and the webhooks. The
 landing page job of the theme QA (`qa/page.mjs`) checks the theme against
 the brand rules and on screen widths from 320 to 1280 px.

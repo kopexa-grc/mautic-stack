@@ -403,7 +403,6 @@ affinity:
   value: {{ toJson . | quote }}
 {{- end }}
 {{- with .Values.mautic.preferenceCenter }}
-{{- if not .topics }}{{ fail "mautic.preferenceCenter: list at least one topic" }}{{ end }}
 - name: MAUTIC_PREFERENCE_CENTER
   value: {{ toJson . | quote }}
 {{- end }}

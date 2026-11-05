@@ -337,7 +337,6 @@
           "properties": {
             "topics": {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -350,11 +349,18 @@
                     "minLength": 1,
                     "maxLength": 191
                   },
-                  "description": {
-                    "type": "string"
+                  "text": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "visible": {
+                    "type": "boolean"
                   }
                 }
               }
+            },
+            "hideOtherTopics": {
+              "type": "boolean"
             },
             "page": {
               "type": "object",
@@ -369,12 +375,10 @@
                   "pattern": "^[a-z0-9][a-z0-9-]*$"
                 },
                 "theme": {
-                  "type": "string",
-                  "minLength": 1
+                  "type": "string"
                 },
                 "language": {
-                  "type": "string",
-                  "minLength": 2
+                  "type": "string"
                 },
                 "updateContent": {
                   "type": "boolean"
