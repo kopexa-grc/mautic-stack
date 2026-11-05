@@ -8,6 +8,7 @@ use Mautic\CategoryBundle\Entity\Category;
 use Mautic\CategoryBundle\Model\CategoryModel;
 use Mautic\CoreBundle\Configurator\Configurator;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
+use Mautic\CoreBundle\Helper\LanguageHelper;
 use Mautic\CoreBundle\Helper\ThemeHelperInterface;
 use Mautic\PageBundle\Entity\Page;
 use Mautic\PageBundle\Model\PageModel;
@@ -38,6 +39,7 @@ class PreferenceCenterSync
         private readonly ThemeHelperInterface $themes,
         private readonly Configurator $configurator,
         private readonly CoreParametersHelper $parameters,
+        private readonly LanguageHelper $languages,
     ) {
     }
 
@@ -96,6 +98,10 @@ class PreferenceCenterSync
         ];
         if (1 !== preg_match('/^[a-z0-9][a-z0-9-]*$/', $page['alias'])) {
             $errors[] = 'page.alias: lowercase letters, digits and hyphens only';
+        }
+        if ('' !== $page['language'] && !array_key_exists($page['language'], $installed = $this->languages->getSupportedLanguages())) {
+            // Saving a page in a language that is not installed makes Mautic download it.
+            $errors[] = sprintf('page.language: "%s" is not installed (installed: %s)', $page['language'], implode(', ', array_keys($installed)));
         }
         $systemTheme = trim((string) ($data['systemTheme'] ?? 'kopexa'));
         foreach (['page.theme' => $page['theme'], 'systemTheme' => $systemTheme] as $what => $theme) {
@@ -177,8 +183,6 @@ class PreferenceCenterSync
         if ($isNew) {
             $page->setTitle($declared['title']);
             $page->setAlias($declared['alias']);
-            // Only when asked for: Mautic creates translations/<lang> for a language
-            // that is not installed (read-only in the image without a volume).
             if ('' !== $declared['language']) {
                 $page->setLanguage($declared['language']);
             }

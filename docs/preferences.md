@@ -52,6 +52,7 @@ mautic:
       - name: Produkt-Updates
         description: Neue Funktionen und Verbesserungen in Kopexa
     page: {alias: einstellungen, title: E-Mail-Einstellungen}
+    # page.language: only an installed Mautic language (default: none)
     # frequency: true    # also offer "fewer emails"
     # pauseDates: true   # also offer a pause
 ```
