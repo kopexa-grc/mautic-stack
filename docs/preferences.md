@@ -27,8 +27,8 @@ category any more:
 So:
 
 - **Every marketing email gets its topic** (email → *Category*). Without a
-  category the topic switches do not apply to it. The MCP tools set it with
-  `category` and warn when a marketing email has none.
+  category the topic switches do not apply to it. The MCP email tools set it
+  with `topic` (MCP bundle 0.8.0) and warn when an email has none.
 - **Service emails** the person asked for (download link after a form,
   access link to a booked webinar, double opt-in) get **no** topic and are
   sent as *transactional* in the campaign step. They contain no marketing.

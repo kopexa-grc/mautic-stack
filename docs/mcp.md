@@ -68,6 +68,7 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `list_emails`, `get_email` | `mcp:read` | Emails with type, status, statistics, HTML |
 | `get_email_stats` | `mcp:read` | Sent, read, read rate, clicks per link, pending recipients |
 | `list_campaigns`, `get_campaign` | `mcp:read` | Campaigns with segments and their flow (in the `set_campaign_steps` format, with contacts per step) |
+| `list_email_topics` | `mcp:read` | Topics of the email preference center (Mautic categories); the email tools take `topic` (name or ID, `""` clears) and warn when an email has none |
 | `list_email_layouts` | `mcp:read` | Brand layouts of the installed themes (Kopexa): panels `hero`, `article`, `cards`, their elements (label, title, text, button, image, …) and placeholder images |
 | `create_email_from_layout` | `mcp:write` | New **unpublished** email in the brand theme from panels and elements: stored as MJML (**editable in Mautic's builder**) and as HTML for sending; header and footer added automatically; inline HTML sanitized, links https only |
 | `update_email_layout` | `mcp:write` | Replace the content (and subject) of an unpublished, never-sent email |
@@ -362,6 +363,12 @@ precompiled block library (`themes/kopexa/mcp/blocks.json`), and the
 theme's QA proves that an assembled email is identical to MJML's own
 output. Then `send_test_email` sends it to the signed-in user for a look in
 the real inbox.
+
+Every marketing email gets a `topic` (`list_email_topics`), so people who
+switched that topic off in their email preferences do not get it. Emails
+without one carry a `topic_warning`; that is right only for service emails
+the person asked for, sent as transactional (see
+[preferences](preferences.md)).
 
 ![Email built from the Kopexa layout via MCP](img/mcp-layout-email.png)
 
