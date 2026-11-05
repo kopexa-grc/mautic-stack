@@ -19,8 +19,11 @@ if (leftover) { console.error(`unsupported Twig in template: ${leftover[0]}`); p
 
 const tokens = {
   '{subject}': subject,
-  '{unsubscribe_text}': `<a href="${site}/email/unsubscribe/0123456789abcdef">Abmelden</a>`,
-  '{webview_text}': `<a href="${site}/email/view/0123456789abcdef">Im Browser ansehen</a>`,
+  '{unsubscribe_url}': `${site}/email/unsubscribe/0123456789abcdef`,
+  '{webview_url}': `${site}/email/view/0123456789abcdef`,
+  // Mautic's own link texts are English unless configured: themes use the URL tokens with their own text.
+  '{unsubscribe_text}': `<a href="${site}/email/unsubscribe/0123456789abcdef">Unsubscribe</a> to no longer receive emails from us.`,
+  '{webview_text}': `<a href="${site}/email/view/0123456789abcdef">Having trouble reading this email? Click here.</a>`,
   // Leuchtfeuer DOI plugin
   '{doi_link}': `${site}/email/verify/MTI6MDEyMzQ1Njc4OWFiY2RlZg`,
 };

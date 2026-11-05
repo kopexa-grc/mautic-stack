@@ -1,0 +1,30 @@
+{
+    "name": "kopexa/mautic-theme-kopexa-preferences",
+    "description": "Kopexa email preferences page for Mautic (preference center): topics, all emails on/off, save — German texts, brand design.",
+    "type": "mautic-theme",
+    "license": "Apache-2.0",
+    "keywords": [
+        "mautic",
+        "theme",
+        "preference-center"
+    ],
+    "homepage": "https://github.com/kopexa-grc/mautic-stack/tree/main/image/extensions/mautic-theme-kopexa-preferences",
+    "support": {
+        "issues": "https://github.com/kopexa-grc/mautic-stack/issues",
+        "docs": "https://github.com/kopexa-grc/mautic-stack/tree/main/docs"
+    },
+    "authors": [
+        {
+            "name": "Kopexa",
+            "homepage": "https://kopexa.com"
+        }
+    ],
+    "extra": {
+        "install-directory-name": "kopexa-preferences"
+    },
+    "require": {
+        "mautic/core-lib": "^7.0",
+        "kopexa/mautic-theme-kopexa": "^0.4"
+    },
+    "minimum-stability": "stable"
+}

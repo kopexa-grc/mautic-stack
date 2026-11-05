@@ -158,10 +158,12 @@ echo "Kopexa email theme"
 [[ "$(code /themes/kopexa/thumbnail.png)" == 200 ]] && pass "theme thumbnail present" || fail "theme thumbnail missing"
 [[ "$(code /themes/kopexa/qa/package.json)" =~ ^(403|404)$ ]] && pass "theme QA tooling not shipped" || fail "theme QA files reachable"
 grep -q '^kopexa/mautic-theme-kopexa ' <<<"$(docker run --rm "$IMG" plugins)" && pass "theme installed via Composer" || fail "theme not installed"
-for v in kopexa-confirm kopexa-hero kopexa-page; do
+for v in kopexa-confirm kopexa-hero kopexa-page kopexa-preferences; do
   [[ "$(code "/themes/$v/thumbnail.png")" == 200 ]] && pass "theme variant $v installed" || fail "theme variant $v missing"
 done
 [[ "$(code /themes/kopexa/assets/placeholder/card-1.png)" == 200 ]] && pass "placeholder images served" || fail "placeholder images missing"
+[[ "$(code /themes/kopexa/assets/fonts/kopexa-fonts.css)" == 200 ]] && ! curl -s "$base/s/login" | grep -q 'fonts.googleapis.com' \
+  && pass "no Google Fonts: Mautic's editor fonts are the self-hosted brand fonts" || fail "Google Fonts linked (editor_fonts)"
 
 echo "Postal bounce webhook (signing key from MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY)"
 api() { curl -s -u 'admin:Sm0ke-Test-Passw0rd!' -H 'Accept: application/json' "$@"; }

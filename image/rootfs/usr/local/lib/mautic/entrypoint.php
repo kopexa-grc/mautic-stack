@@ -152,6 +152,26 @@ function buildParameters(): array
         ];
     }
 
+    // Fonts of the builders (editor_fonts). Mautic injects every entry with a
+    // URL as a stylesheet into the pages it renders; its defaults load eight
+    // Google Fonts, sending every visitor's IP to Google. Ours: the Kopexa
+    // brand fonts, self-hosted by the theme, and system fonts. Override with
+    // MAUTIC_CONFIG_PARAMETERS {"editor_fonts": [...]}.
+    $site = rtrim((string) ($params['site_url'] ?? ''), '/');
+    $params['editor_fonts'] = [
+        ['name' => 'Inter', 'font' => "Inter, 'Segoe UI', Helvetica, Arial, sans-serif", 'url' => $site.'/themes/kopexa/assets/fonts/kopexa-fonts.css'],
+        ['name' => 'IBM Plex Sans', 'font' => "'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif"],
+        ['name' => 'Geist Mono', 'font' => "'Geist Mono', 'Courier New', monospace"],
+        ['name' => 'Arial', 'font' => 'Arial, Helvetica Neue, Helvetica, sans-serif'],
+        ['name' => 'Courier New', 'font' => 'Courier New, Courier, Lucida Sans Typewriter, Lucida Typewriter, monospace'],
+        ['name' => 'Georgia', 'font' => 'Georgia, Times, Times New Roman, serif'],
+        ['name' => 'Helvetica', 'font' => 'Helvetica Neue, Helvetica, Arial, sans-serif'],
+        ['name' => 'Tahoma', 'font' => 'Tahoma, Verdana, Segoe, sans-serif'],
+        ['name' => 'Times New Roman', 'font' => 'TimesNewRoman, Times New Roman, Times, Baskerville, Georgia, serif'],
+        ['name' => 'Trebuchet MS', 'font' => 'Trebuchet MS, Lucida Grande, Lucida Sans Unicode, Lucida Sans, Tahoma, sans-serif'],
+        ['name' => 'Verdana', 'font' => 'Verdana, Geneva, sans-serif'],
+    ];
+
     $extra = env('MAUTIC_CONFIG_PARAMETERS');
     if (null !== $extra) {
         $decoded = json_decode($extra, true);
@@ -406,6 +426,12 @@ function init(array $params, array $environment): void
     }
     if (0 !== $rc = console(['mautic:plugins:reload'], $environment)) {
         fail('plugin reload failed', $rc);
+    }
+
+    // Pages and emails saved with Mautic's default editor fonts still link
+    // Google Fonts in their stored HTML; editor_fonts no longer adds them.
+    if (0 !== $rc = console(['kopexa:privacy:strip-third-party-fonts'], $environment)) {
+        fail('removing third-party fonts failed', $rc);
     }
 
     // Roles from the Helm values (mautic.roles), matched by name.

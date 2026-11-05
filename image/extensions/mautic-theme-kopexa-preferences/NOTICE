@@ -1,0 +1,13 @@
+Kopexa email preferences theme for Mautic
+Copyright Kopexa GmbH
+
+The theme's code and templates are licensed under the Apache License 2.0
+(LICENSE).
+
+Not covered by that license:
+
+- The Kopexa name and logos (assets/logo-*.png) are trademarks of Kopexa
+  GmbH. They are included so the theme works as Kopexa's own email design.
+  Do not use them for your own emails; replace them with your logo.
+- The fonts in assets/fonts/ are licensed under the SIL Open Font License
+  1.1 (see the license files in that directory).

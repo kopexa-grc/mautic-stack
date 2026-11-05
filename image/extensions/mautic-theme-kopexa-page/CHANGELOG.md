@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 – 2026-11-05
+
+- System pages (unsubscribed, re-subscribed) in the Kopexa layout, from the base theme 0.4.0.
+
 ## 0.3.0 – 2026-11-04
 
 - Aimed at the people who implement NIS2 (IT leads, NIS2 project owners,

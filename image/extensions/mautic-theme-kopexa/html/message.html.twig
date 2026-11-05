@@ -1,0 +1,61 @@
+{#- System pages Mautic shows for links in emails with this theme
+    (EmailBundle PublicController: unsubscribe, re-subscribe, preference
+    center). Shared by all Kopexa themes ({% include %} from the variants).
+
+    - A preference center page (theme kopexa-preferences) arrives as a
+      complete document: it is passed through, with Mautic's head
+      declarations and body scripts added (they carry the form's hidden
+      fields and prefcenter.js, without them saving fails).
+    - Everything else (unsubscribed, re-subscribed, Mautic's built-in
+      preference form) gets the Kopexa layout. Its text comes from
+      Mautic's configuration (unsubscribe_message, resubscribe_message). -#}
+{%- if '<html' in message|lower -%}
+{{ message|replace({'</head>': outputHeadDeclarations() ~ '</head>', '</body>': outputScripts('bodyClose') ~ '</body>'})|raw }}
+{%- else -%}
+{%- set kx = 'themes/kopexa/assets/' -%}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopexa</title>
+  <style>
+    @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/IBM-Plex-Sans-600.ttf', null, null, true) }}') format('truetype'); }
+    @font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/Inter-400.ttf', null, null, true) }}') format('truetype'); }
+    @font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; font-display: swap; src: url('{{ getAssetUrl(kx~'fonts/Inter-600.ttf', null, null, true) }}') format('truetype'); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #FFFFFF; color: #10253D; font-family: Inter, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: #006CB8; font-weight: 600; }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid #006CB8; outline-offset: 3px; }
+    .kx-wrap { width: 100%; max-width: 620px; margin: 0 auto; padding: 0 20px; }
+    .kx-header { min-height: 68px; display: flex; align-items: center; }
+    .kx-logo { height: 26px; width: auto; display: block; }
+    .kx-card { margin: 32px 0; border: 1px solid #E1E6EC; border-radius: 14px; padding: 28px 24px; }
+    .kx-card h1 { font-family: 'IBM Plex Sans', Inter, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 28px; line-height: 1.2; color: #070B14; margin: 0 0 12px; letter-spacing: -.02em; }
+    .kx-message { margin: 0; }
+    /* Mautic's built-in preference form, if it is used instead of a preference page */
+    .kx-message input[type="checkbox"] { width: 20px; height: 20px; accent-color: #006CB8; vertical-align: middle; margin-right: 8px; }
+    .kx-message .btn, .kx-message button { background: #006CB8; color: #FFFFFF; border: 0; border-radius: 8px; padding: 13px 22px; font: inherit; font-weight: 600; cursor: pointer; }
+    .kx-message .btn:hover, .kx-message button:hover { background: #005B9B; }
+    .kx-message table { border-collapse: collapse; }
+    .kx-footer { border-top: 1px solid #E1E6EC; padding: 24px 0 32px; font-size: 14px; color: #475B70; }
+    .kx-footer a { color: #475B70; font-weight: 400; text-decoration: none; margin-right: 20px; }
+    .kx-footer a:hover { color: #006CB8; text-decoration: underline; }
+  </style>
+  {{ outputHeadDeclarations() }}
+</head>
+<body>
+  {{ outputScripts('bodyOpen') }}
+  <div class="kx-wrap">
+    <header class="kx-header"><img class="kx-logo" src="{{ getAssetUrl(kx~'logo-dark.png', null, null, true) }}" alt="Kopexa" width="102" height="26"></header>
+    <main class="kx-card">
+      <h1>E-Mail-Einstellungen</h1>
+      <div class="kx-message">{{ message|raw }}</div>
+      {% if content is defined and content %}<div class="kx-message">{{ content|raw }}</div>{% endif %}
+    </main>
+    <footer class="kx-footer">© Kopexa GmbH · <a href="https://kopexa.com/de/legal/imprint">Impressum</a><a href="https://kopexa.com/de/legal/privacy">Datenschutz</a></footer>
+  </div>
+  {{ outputScripts('bodyClose') }}
+</body>
+</html>
+{%- endif -%}

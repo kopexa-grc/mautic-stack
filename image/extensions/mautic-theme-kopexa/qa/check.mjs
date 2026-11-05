@@ -69,7 +69,8 @@ if (themeDir !== baseDir) {
   }
   /'themes\/'~template~'/.test(source) ? fail("variants have no assets of their own: use 'themes/kopexa/assets/...'") : ok('assets from the base theme');
 }
-/\{unsubscribe_text\}|\{unsubscribe_url\}/.test(source) ? ok('unsubscribe token present') : fail('no {unsubscribe_text} / {unsubscribe_url} in template');
+/\{unsubscribe_text\}|\{webview_text\}/.test(source) ? fail('{unsubscribe_text} / {webview_text} render Mautic\'s English default texts — use <a href="{unsubscribe_url}"> / {webview_url} with own text') : ok('no Mautic default link texts (English unless configured)');
+/\{unsubscribe_url\}/.test(source) ? ok('unsubscribe link present') : fail('no {unsubscribe_text} / {unsubscribe_url} in template');
 /\{webview_text\}|\{webview_url\}/.test(source) ? ok('web view token present') : warn('no web view link');
 // Mautic's builder only accepts a bare <mjml> root, so MJML writes lang="und".
 const lang = (html.match(/<html[^>]*\blang="([a-z-]+)"/i) || [])[1];
