@@ -1,6 +1,6 @@
 # mautic
 
-![Version: 0.4.2](https://img.shields.io/badge/Version-0.4.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.2.2](https://img.shields.io/badge/AppVersion-7.2.2-informational?style=flat-square)  [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
+![Version: 0.4.3](https://img.shields.io/badge/Version-0.4.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.2.2](https://img.shields.io/badge/AppVersion-7.2.2-informational?style=flat-square)  [![chart](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml/badge.svg)](https://github.com/kopexa-grc/mautic-stack/actions/workflows/chart.yml)
 
 Hardened, always up-to-date Mautic for Kubernetes — web, queue workers, cron jobs, SAML SSO, MCP server for AI assistants (OAuth 2.1), Valkey for cache and sessions, optional MariaDB and restic backups.
 
@@ -68,7 +68,7 @@ httpRoute:
 Verify the chart signature (keyless cosign):
 
 ```bash
-cosign verify ghcr.io/kopexa-grc/charts/mautic:0.4.2 \
+cosign verify ghcr.io/kopexa-grc/charts/mautic:0.4.3 \
   --certificate-identity-regexp 'https://github.com/kopexa-grc/mautic-stack/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
