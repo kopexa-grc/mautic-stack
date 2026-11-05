@@ -8,7 +8,7 @@ mautic:
         visible: false
       - name: Produkt-Updates
     hideOtherTopics: true
-    page: {alias: einstellungen, title: E-Mail-Einstellungen, updateContent: false}
+    page: {alias: preferences, title: E-Mail-Einstellungen, updateContent: false}
     systemTheme: kopexa
     linkRequest: {locale: de, buttonColor: '#006CB8', redirect: true}
     frequency: false

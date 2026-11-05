@@ -69,13 +69,13 @@ mautic:
       - name: Produkt-Updates
         text: Neue Funktionen und Verbesserungen in Kopexa
     hideOtherTopics: true   # other categories are not on the page
-    # page: {alias: einstellungen, title: E-Mail-Einstellungen}   # the defaults
+    # page: {alias: preferences, title: E-Mail-Einstellungen}   # the defaults
     # frequency: true    # also offer "fewer emails"
     # pauseDates: true   # also offer a pause
 ```
 
 At every start the init container runs `preferences-center:sync` with these
-values plus the image defaults (page `einstellungen` in the theme
+values plus the image defaults (page `preferences` in the theme
 `kopexa-preferences`, system pages in the theme `kopexa`):
 
 1. topics: global categories matched by name, missing ones created; shown
@@ -105,7 +105,7 @@ in the values instead.
 
 `https://go.kopexa.com/email/preferences` asks for an email address and
 sends a personal link to the preference page. Use it as the "E-Mail-
-Einstellungen" link on kopexa.com. `/einstellungen` without a personal link
+Einstellungen" link on kopexa.com. `/preferences` without a personal link
 leads there too.
 
 - Same answer for every address („Wenn diese Adresse bei uns eingetragen

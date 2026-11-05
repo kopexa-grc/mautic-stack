@@ -453,8 +453,18 @@ function init(array $params, array $environment): void
         if (!is_array($declared) || array_is_list($declared)) {
             fail('MAUTIC_PREFERENCE_CENTER must be a JSON object');
         }
-        $declared['page'] = (is_array($declared['page'] ?? null) ? $declared['page'] : [])
-            + ['alias' => 'einstellungen', 'title' => 'E-Mail-Einstellungen', 'theme' => 'kopexa-preferences'];
+        $page = is_array($declared['page'] ?? null) ? $declared['page'] : [];
+        if (!isset($page['alias'])) {
+            // The default address was /einstellungen until image 2026-11; keep that
+            // page (its edits, statistics, preference center ID) under /preferences.
+            $prefix = $params['db_table_prefix'] ?? '';
+            $has    = static fn (string $alias): bool => false !== $pdo->query(sprintf("SELECT 1 FROM `%spages` WHERE alias = %s", $prefix, $pdo->quote($alias)))->fetchColumn();
+            if (!$has('preferences') && $has('einstellungen')) {
+                $pdo->exec(sprintf("UPDATE `%spages` SET alias = 'preferences' WHERE alias = 'einstellungen'", $prefix));
+                logmsg('preference page moved from /einstellungen to /preferences');
+            }
+        }
+        $declared['page'] = $page + ['alias' => 'preferences', 'title' => 'E-Mail-Einstellungen', 'theme' => 'kopexa-preferences'];
         $declared['systemTheme'] ??= 'kopexa';
         $declared['linkRequest'] = (is_array($declared['linkRequest'] ?? null) ? $declared['linkRequest'] : [])
             + ['locale' => 'de', 'buttonColor' => '#006CB8'];

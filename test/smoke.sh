@@ -67,7 +67,7 @@ env+=(-e MAUTIC_OAUTH_PRIVATE_KEY="$(cat "$oauth_key")" -e MAUTIC_OAUTH_ENCRYPTI
 env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
 # Email preference center (Helm: mautic.preferenceCenter).
 # Set up by kopexa/mautic-preferences-center; page and system pages in the Kopexa themes.
-env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","text":"Einladungen zu Online-Terminen"},{"name":"Intern","visible":false},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}],"page":{"alias":"einstellungen"}}')
+env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","text":"Einladungen zu Online-Terminen"},{"name":"Intern","visible":false},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}]}')
 secret="$(mktemp)"; echo mautic >"$secret"; chmod 644 "$secret"
 env+=(-v "$secret:/run/secrets/db-password:ro")
 
@@ -84,7 +84,7 @@ echo "init is idempotent"
 init2="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)" \
   || { echo "$init2" | tail -20; fail "second init failed"; }
 pass "second init completed"
-grep -q 'topic "Webinare & Events": unchanged' <<<"$init2" && grep -q 'page "einstellungen": unchanged' <<<"$init2" && grep -q 'settings: unchanged' <<<"$init2" \
+grep -q 'topic "Webinare & Events": unchanged' <<<"$init2" && grep -q 'page "preferences": unchanged' <<<"$init2" && grep -q 'settings: unchanged' <<<"$init2" \
   && pass "preference center: second init changes nothing (topics, page, settings)" || { echo "$init2" | grep -iE 'topic|page|settings|prefer'; fail "preference center sync not idempotent"; }
 
 docker run -d --name "$run_id-web" --network "$net" "${hardening[@]}" "${env[@]}" \
@@ -209,9 +209,9 @@ removed() { docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SEL
 [[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$pref_jar" -c "$pref_jar" -X POST "$base/email/unsubscribe/$pref_hash" "${fields[@]}")" == 302 ]] \
   && [[ "$(removed "$webinar_cat")" == 1 ]] && [[ "$(removed "$intern_cat")" == 0 ]] \
   && pass "switching a topic off is saved for \"Webinare & Events\" only; the hidden topic stays on" || fail "saving preferences"
-[[ "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$base/einstellungen")" == "302 $base/email/preferences" ]] \
+[[ "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$base/preferences")" == "302 $base/email/preferences" ]] \
   && curl -s "$base/email/preferences" | grep -q 'Gib deine E-Mail-Adresse ein' \
-  && pass "/einstellungen without a personal link leads to the link request (German, Kopexa layout)" || fail "link request"
+  && pass "/preferences without a personal link leads to the link request (German, Kopexa layout)" || fail "link request"
 
 echo "OAuth 2.1 (keys and issuer from the environment; the bundle tests the protocol)"
 b64url_decode() { local s; s="$(tr '_-' '/+' <<<"$1")"; while (( ${#s} % 4 )); do s+='='; done; base64 -d <<<"$s"; }

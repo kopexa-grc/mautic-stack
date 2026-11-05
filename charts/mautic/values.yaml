@@ -224,7 +224,7 @@ mautic:
   #     - name: Ressourcen & Downloads
   #     - name: Produkt-Updates
   #   hideOtherTopics: true  # other categories not on the page
-  #   page: {alias: einstellungen, title: E-Mail-Einstellungen}
+  #   page: {alias: preferences, title: E-Mail-Einstellungen}
   #   frequency: false   # also offer "fewer emails"
   #   pauseDates: false  # also offer a pause
   #   linkRequest: {email: My link email}  # own email for /email/preferences (default: the plugin's)
