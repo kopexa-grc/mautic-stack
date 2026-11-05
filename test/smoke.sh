@@ -197,7 +197,7 @@ curl -s -c "$pref_jar" -b "$pref_jar" "$base/email/unsubscribe/$pref_hash" -o /t
 grep -q 'Du entscheidest, was in deinem Postfach landet' /tmp/prefs.html && grep -q 'name="lead_contact_frequency_rules"' /tmp/prefs.html \
   && [[ "$(grep -c '<html' /tmp/prefs.html)" == 1 ]] && ! grep -q 'fonts.googleapis.com' /tmp/prefs.html \
   && pass "unsubscribe link opens the Kopexa preference page (Mautic's form inside, one document, no Google Fonts)" || { head -c 600 /tmp/prefs.html; fail "preference page"; }
-pref_token="$(sed -n 's/.*name="lead_contact_frequency_rules\[_token\]"[^>]*value="\([^"]*\)".*/\1/p;s/.*value="\([^"]*\)"[^>]*name="lead_contact_frequency_rules\[_token\]".*/\1/p' /tmp/prefs.html | head -1)"
+pref_token="$(perl -0ne 'print $1 if /<input\b[^>]*name="lead_contact_frequency_rules\[_token\]"[^>]*>/ and $& =~ /\bvalue="([^"]*)"/' /tmp/prefs.html)"  # the tag spans lines
 other_cats="$(api "$base/api/categories?limit=100" | jq -r --argjson w "$webinar_cat" '[.categories[] | select(.bundle == "global" and .id != $w) | .id] | .[]')"
 fields=(--data-urlencode "lead_contact_frequency_rules[_token]=$pref_token" --data-urlencode "lead_contact_frequency_rules[lead_channels][subscribed_channels][0]=email")
 for c in $other_cats; do fields+=(--data-urlencode "lead_contact_frequency_rules[global_categories][]=$c"); done
