@@ -12,6 +12,13 @@ mautic:
     systemTheme: kopexa
     linkRequest: {locale: de, buttonColor: '#006CB8', redirect: true}
     frequency: false
+  cloudStorage:
+    amazonS3:
+      enabled: true
+      existingSecret: mautic-s3
+      bucket: marketing-assets
+      region: de
+      endpoint: https://s3.de.io.cloud.ovh.net
   siteUrl: https://mautic.example.com
   trustedHosts: ['^mautic\.example\.com$']
   mailer:

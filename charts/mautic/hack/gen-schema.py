@@ -87,6 +87,8 @@ OVERRIDES = {
             "buttonColor": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
             "redirect": {"type": "boolean"}}}}},
     "mautic.oauth.resource": {"type": "string", "pattern": "^(https?://.+)?$"},
+    "mautic.cloudStorage.amazonS3.endpoint": {"type": "string", "pattern": "^(https?://.+)?$"},
+    "mautic.cloudStorage.amazonS3.bucket": {"type": "string", "pattern": "^([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])?$"},
     "valkey.maxmemory": {"type": "string", "pattern": "^[0-9]+(b|kb|mb|gb)?$"},
     "web.replicaCount": {"type": "integer", "minimum": 0},
     "worker.replicaCount": {"type": "integer", "minimum": 0},

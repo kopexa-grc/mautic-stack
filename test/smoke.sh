@@ -354,6 +354,8 @@ grep -q 'disabled on this Mautic instance' <<<"$off" && jq -e '.points == 20' <<
 source "$(dirname "$0")/mcp-layouts.sh"
 # shellcheck source=test/roles.sh
 source "$(dirname "$0")/roles.sh"
+# shellcheck source=test/cloud-storage.sh
+source "$(dirname "$0")/cloud-storage.sh"
 
 echo "console + worker"
 docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" console mautic:segments:update \

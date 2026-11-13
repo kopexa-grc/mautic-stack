@@ -59,6 +59,15 @@ name (`kopexa:roles:sync`), e.g.
 `[{"name": "Marketing", "permissions": {"lead:leads": ["full"]}}]`. The chart
 sets it from `mautic.roles`; see [sso.md](sso.md#roles).
 
+## Amazon S3 plugin
+
+`MAUTIC_S3_ACCESS_KEY_ID`, `MAUTIC_S3_SECRET_ACCESS_KEY`, `MAUTIC_S3_BUCKET`,
+`MAUTIC_S3_REGION`, `MAUTIC_S3_ENDPOINT`: with any of them set, the `init`
+command configures and publishes Mautic's Amazon S3 plugin
+(`kopexa:cloud-storage:sync`). Key ID, secret and bucket are required. The
+chart sets them from `mautic.cloudStorage.amazonS3`, for the init container
+only; see [plugins.md](plugins.md#amazon-s3-and-s3-compatible-storage).
+
 ## SAML single sign-on
 
 `MAUTIC_SAML_IDP_METADATA` (IdP metadata XML), `MAUTIC_SAML_IDP_ENTITY_ID`,

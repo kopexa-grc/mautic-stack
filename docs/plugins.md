@@ -26,6 +26,42 @@ bars), **Tag Manager**, **Cloud Storage** (Amazon S3 and S3-compatible
 storage such as OVH, for assets) and the CRM, Zapier, Gmail and Outlook
 integrations. They appear under *Settings → Plugins*; nothing to install.
 
+### Amazon S3 and S3-compatible storage
+
+The Amazon S3 plugin (Cloud Storage) lets you pick files that are already in
+a bucket when you create an asset with storage location *Remote*; downloads
+are then counted by Mautic. It reads from the bucket and does not upload:
+files uploaded in Mautic stay on the media volume, and files get into the
+bucket with other tools. A read-only access key is enough.
+
+Configure it in *Settings → Plugins → Amazon S3*, or from the chart:
+
+```yaml
+mautic:
+  cloudStorage:
+    amazonS3:
+      enabled: true
+      existingSecret: mautic-s3   # keys access-key-id, secret-access-key
+      bucket: marketing-assets
+      region: de                              # OVH; AWS e.g. eu-central-1
+      endpoint: https://s3.de.io.cloud.ovh.net  # empty for Amazon S3
+```
+
+The init container stores these settings the way the plugin dialog does
+(encrypted with Mautic's `secret-key`) and publishes the plugin. Only the
+init container gets the access key.
+
+- While enabled, the values own the plugin: changes made in the dialog are
+  overwritten at the next start.
+- A changed Secret takes effect when the web pod restarts
+  (`kubectl rollout restart deploy/<release>`).
+- Setting `enabled: false` leaves the stored settings as they are; unpublish
+  the plugin in Mautic to switch it off.
+- With `networkPolicy.egress` enabled, allow the web pods to reach the
+  endpoint on port 443.
+- The asset links point at the bucket (`https://<bucket>.<endpoint host>/…`),
+  so the objects must be publicly readable.
+
 ### Double opt-in
 
 1. *Settings → Plugins → Double Opt-In*: enable it, set the link timeout.

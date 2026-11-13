@@ -298,6 +298,40 @@ affinity:
 {{- end }}
 {{- end }}
 
+{{/*
+Amazon S3 plugin (mautic.cloudStorage.amazonS3). Init container only: the
+init stores the settings in the database, the other containers read them
+from there and never see the access key in their environment.
+*/}}
+{{- define "mautic.cloudStorageEnv" -}}
+{{- with .Values.mautic.cloudStorage.amazonS3 }}
+{{- if .enabled }}
+{{- if not .existingSecret }}{{ fail "mautic.cloudStorage.amazonS3.enabled requires existingSecret (access key of the bucket)" }}{{ end }}
+{{- if not .bucket }}{{ fail "mautic.cloudStorage.amazonS3.enabled requires bucket" }}{{ end }}
+- name: MAUTIC_S3_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ .existingSecret }}
+      key: {{ .accessKeyIdKey }}
+- name: MAUTIC_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .existingSecret }}
+      key: {{ .secretAccessKeyKey }}
+- name: MAUTIC_S3_BUCKET
+  value: {{ .bucket | quote }}
+{{- with .region }}
+- name: MAUTIC_S3_REGION
+  value: {{ . | quote }}
+{{- end }}
+{{- with .endpoint }}
+- name: MAUTIC_S3_ENDPOINT
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 {{/* ---------- environment ---------- */}}
 {{- define "mautic.env" -}}
 {{ include "mautic.db.env" (dict "ctx" . "prefix" "MAUTIC_DB_") }}

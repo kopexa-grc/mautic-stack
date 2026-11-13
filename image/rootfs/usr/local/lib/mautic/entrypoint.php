@@ -474,6 +474,24 @@ function init(array $params, array $environment): void
         }
     }
 
+    // Amazon S3 plugin (Cloud Storage) from the Helm values
+    // (mautic.cloudStorage.amazonS3): keys, bucket, region and endpoint are
+    // stored like the plugin dialog stores them and the plugin is published.
+    // The values reach the command through its environment, resolved here so
+    // that the _FILE variants work too.
+    $s3 = [];
+    foreach (['ACCESS_KEY_ID', 'SECRET_ACCESS_KEY', 'BUCKET', 'REGION', 'ENDPOINT'] as $key) {
+        if (null !== $value = env('MAUTIC_S3_'.$key)) {
+            $s3['MAUTIC_S3_'.$key] = $value;
+        }
+    }
+    if ([] !== $s3) {
+        logmsg('syncing the Amazon S3 plugin');
+        if (0 !== $rc = console(['kopexa:cloud-storage:sync'], $s3 + $environment)) {
+            fail('Amazon S3 plugin sync failed', $rc);
+        }
+    }
+
     // The SAML default role by name must exist now (declared in mautic.roles
     // or created in Mautic): fail the init rather than start SSO without it.
     $name = env('MAUTIC_SAML_IDP_DEFAULT_ROLE_NAME');

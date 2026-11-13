@@ -230,6 +230,31 @@ mautic:
   #   linkRequest: {email: My link email}  # own email for /email/preferences (default: the plugin's)
   preferenceCenter: {}
 
+  # Mautic's Amazon S3 plugin (Cloud Storage bundle, docs/plugins.md): pick
+  # files that are already in a bucket as "Remote" assets. The plugin reads
+  # from the bucket; it does not upload. The init container stores these
+  # settings like the plugin dialog does (encrypted with secret-key) and
+  # publishes the plugin; while enabled, changes made in the dialog are
+  # overwritten at the next start. Works with S3-compatible storage (OVH,
+  # MinIO, Ceph) through `endpoint`.
+  cloudStorage:
+    amazonS3:
+      # -- Configure and publish the Amazon S3 plugin from these values.
+      enabled: false
+      # -- Secret with the access key of the bucket (read access is enough).
+      existingSecret: ""
+      # -- Key of the access key ID in `existingSecret`.
+      accessKeyIdKey: access-key-id
+      # -- Key of the secret access key in `existingSecret`.
+      secretAccessKeyKey: secret-access-key
+      # -- Bucket name.
+      bucket: ""
+      # -- Region, e.g. `eu-central-1`, or `de` for OVH. Empty: `us-east-1`.
+      region: ""
+      # -- Endpoint of S3-compatible storage, e.g. https://s3.de.io.cloud.ovh.net.
+      # Empty: Amazon S3. Allow egress to it when networkPolicy.egress is enabled.
+      endpoint: ""
+
   # -- Any other Mautic parameter (merged last, wins), e.g.
   #   { "default_timezone": "Europe/Berlin", "locale": "de" }
   configParameters: {}

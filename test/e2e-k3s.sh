@@ -81,7 +81,13 @@ cat >/tmp/idp-metadata.xml <<XML
 </md:EntityDescriptor>
 XML
 kubectl -n "$NS" create configmap idp-saml --from-file=metadata.xml=/tmp/idp-metadata.xml
+kubectl -n "$NS" create secret generic mautic-s3 --from-literal=access-key-id=E2EACCESSKEY --from-literal=secret-access-key=e2e-secret
 helm install mautic "$CHART" -n "$NS" "${common[@]}" \
+  --set mautic.cloudStorage.amazonS3.enabled=true \
+  --set mautic.cloudStorage.amazonS3.existingSecret=mautic-s3 \
+  --set mautic.cloudStorage.amazonS3.bucket=marketing-assets \
+  --set mautic.cloudStorage.amazonS3.region=de \
+  --set mautic.cloudStorage.amazonS3.endpoint=https://s3.de.io.cloud.ovh.net \
   --set mautic.saml.enabled=true \
   --set-json 'mautic.saml.idpMetadataFrom={"configMapKeyRef":{"name":"idp-saml","key":"metadata.xml"}}' \
   --set mautic.saml.defaultRole=Marketing \
@@ -149,6 +155,14 @@ grep -q 'role "Marketing": unchanged' <<<"$(kubectl -n "$NS" logs deploy/mautic 
   && [[ "$rid_after" == "$rid" ]] \
   && [[ "$(saml_role)" == "$rid" ]] \
   && pass "restart: role unchanged, same ID, same SAML default role" || { kubectl -n "$NS" logs deploy/mautic -c init | tail -5; fail "restart changed roles"; }
+
+step "Amazon S3 plugin from values"
+# The first init configured it; the init of the restart above finds it unchanged.
+grep -q 'cloud storage "Amazon S3": unchanged (bucket marketing-assets, region de, endpoint https://s3.de.io.cloud.ovh.net)' <<<"$(kubectl -n "$NS" logs deploy/mautic -c init)" \
+  && pass "plugin configured by the init, unchanged after the restart" || { kubectl -n "$NS" logs deploy/mautic -c init | grep -i 'cloud storage\|S3' || true; fail "Amazon S3 plugin from values"; }
+! kubectl -n "$NS" get deploy/mautic -o jsonpath='{.spec.template.spec.containers[*].env[*].name}' | grep -q MAUTIC_S3 \
+  && ! kubectl -n "$NS" get deploy/mautic-worker -o jsonpath='{.spec.template.spec.containers[*].env[*].name}' | grep -q MAUTIC_S3 \
+  && pass "only the init container gets the access key" || fail "MAUTIC_S3_* outside the init container"
 
 step "OAuth 2.1 + MCP discovery through the ingress"
 meta="$(https "https://$HOST/.well-known/oauth-authorization-server")"

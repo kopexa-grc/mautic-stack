@@ -61,6 +61,7 @@ spec:
                 secretKeyRef:
                   name: {{ default (include "mautic.secretName" .) .Values.mautic.admin.existingSecret }}
                   key: {{ if .Values.mautic.admin.existingSecret }}{{ .Values.mautic.admin.passwordKey }}{{ else }}admin-password{{ end }}
+            {{- include "mautic.cloudStorageEnv" . | nindent 12 }}
           {{- include "mautic.envFrom" . | nindent 10 }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
