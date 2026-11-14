@@ -115,6 +115,12 @@ mautic:
     fromEmail: ""
     # -- Default sender name.
     fromName: ""
+    # -- Send emails as the contact's owner (Mautic: "Mailer is owner"):
+    # contacts with an owner get emails from that user's name and address,
+    # the others from fromEmail/fromName. Each owner's address must be
+    # allowed by the mail server (in Postal: on a verified domain). Set here,
+    # the switch in Mautic's email settings has no effect.
+    isOwner: true
 
   # Postal bounce handling (kopexa/mautic-postal-bundle). Point a Postal
   # webhook (events MessageBounced, MessageDeliveryFailed) at

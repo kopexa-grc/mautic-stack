@@ -371,6 +371,8 @@ from there and never see the access key in their environment.
 - name: MAUTIC_MAILER_FROM_NAME
   value: {{ . | quote }}
 {{- end }}
+- name: MAUTIC_MAILER_IS_OWNER
+  value: {{ .Values.mautic.mailer.isOwner | toString | quote }}
 {{- with .Values.mautic.messenger.email }}
 - name: MAUTIC_MESSENGER_DSN_EMAIL
   value: {{ . | quote }}

@@ -185,6 +185,9 @@
             },
             "fromName": {
               "type": "string"
+            },
+            "isOwner": {
+              "type": "boolean"
             }
           }
         },

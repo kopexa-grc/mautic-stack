@@ -75,6 +75,23 @@ mautic:
 
 Postal offers STARTTLS on port 25 (and 587 if enabled on the Postal side).
 
+### Sender: the contact's owner
+
+`mautic.mailer.isOwner` (default `true`) is Mautic's *Mailer is owner*:
+contacts with an owner get emails from that user's name and address (Mautic
+user profile, e.g. a sales colleague), contacts without one from
+`fromEmail` / `fromName`.
+
+- Every owner's address must be allowed by Postal: on a domain verified on
+  that Postal server, otherwise Postal rejects the message
+  (`UnauthenticatedFromAddress`).
+- Mautic decides it **per email** (*Mailer is owner* in the email's
+  settings); the global switch is only the default of the email editor.
+  The image applies the Helm value to every email that has no setting of
+  its own (e.g. created through the API) at each start, and MCP-created
+  emails take it as well. An email set to "no" in Mautic stays "no".
+- Set in Helm, the switch in Mautic's email settings has no effect.
+
 ## 2. Bounces: the `/mailer/callback` endpoint
 
 `POST https://<mautic-host>/mailer/callback` is **Mautic's built-in

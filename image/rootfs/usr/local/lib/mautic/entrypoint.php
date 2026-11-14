@@ -20,6 +20,7 @@
  *   MAUTIC_DB_PASSWORD, MAUTIC_DB_TABLE_PREFIX, MAUTIC_SITE_URL,
  *   MAUTIC_SECRET_KEY, MAUTIC_TRUSTED_PROXIES, MAUTIC_TRUSTED_HOSTS,
  *   MAUTIC_MAILER_DSN, MAUTIC_MAILER_FROM_EMAIL, MAUTIC_MAILER_FROM_NAME,
+ *   MAUTIC_MAILER_IS_OWNER,
  *   MAUTIC_MESSENGER_DSN_EMAIL, MAUTIC_MESSENGER_DSN_HIT,
  *   MAUTIC_MESSENGER_DSN_FAILED
  *
@@ -50,6 +51,8 @@ const PARAMETER_MAP = [
     'MAUTIC_MAILER_DSN'           => ['mailer_dsn', 'string'],
     'MAUTIC_MAILER_FROM_EMAIL'    => ['mailer_from_email', 'string'],
     'MAUTIC_MAILER_FROM_NAME'     => ['mailer_from_name', 'string'],
+    // Send as the contact's owner (their name and address) instead of the default sender.
+    'MAUTIC_MAILER_IS_OWNER'      => ['mailer_is_owner', 'bool'],
     'MAUTIC_MESSENGER_DSN_EMAIL'  => ['messenger_dsn_email', 'string'],
     'MAUTIC_MESSENGER_DSN_HIT'    => ['messenger_dsn_hit', 'string'],
     'MAUTIC_MESSENGER_DSN_FAILED' => ['messenger_dsn_failed', 'string'],
@@ -489,6 +492,18 @@ function init(array $params, array $environment): void
         logmsg('syncing the Amazon S3 plugin');
         if (0 !== $rc = console(['kopexa:cloud-storage:sync'], $s3 + $environment)) {
             fail('Amazon S3 plugin sync failed', $rc);
+        }
+    }
+
+    // "Mailer is owner" (Helm mautic.mailer.isOwner): Mautic decides it per
+    // email and uses the global setting only as the default of its editor.
+    // Emails created through the API have no value and would never send as
+    // the owner; they get the configured one. Values set per email stay.
+    if (array_key_exists('mailer_is_owner', $params)) {
+        $updated = $pdo->prepare(sprintf('UPDATE `%semails` SET use_owner_as_mailer = ? WHERE use_owner_as_mailer IS NULL', $params['db_table_prefix'] ?? ''));
+        $updated->execute([$params['mailer_is_owner'] ? 1 : 0]);
+        if ($updated->rowCount() > 0) {
+            logmsg(sprintf('"mailer is owner" %s for %d email(s) without their own setting', $params['mailer_is_owner'] ? 'on' : 'off', $updated->rowCount()));
         }
     }
 

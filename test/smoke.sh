@@ -65,6 +65,8 @@ env+=(-e MAUTIC_POSTAL_WEBHOOK_PUBLIC_KEY="$(openssl rsa -in "$postal_key" -pubo
 oauth_key="$(mktemp)"; openssl genrsa -out "$oauth_key" 2048 2>/dev/null
 env+=(-e MAUTIC_OAUTH_PRIVATE_KEY="$(cat "$oauth_key")" -e MAUTIC_OAUTH_ENCRYPTION_KEY="$(openssl rand -hex 32)")
 env+=(-e 'MAUTIC_CONFIG_PARAMETERS={"api_enabled":true,"api_enable_basic_auth":true}')
+# Helm mautic.mailer.isOwner (default true).
+env+=(-e MAUTIC_MAILER_IS_OWNER=true)
 # Email preference center (Helm: mautic.preferenceCenter).
 # Set up by kopexa/mautic-preferences-center; page and system pages in the Kopexa themes.
 env+=(-e 'MAUTIC_PREFERENCE_CENTER={"topics":[{"name":"Webinare & Events","text":"Einladungen zu Online-Terminen"},{"name":"Intern","visible":false},{"name":"Ressourcen & Downloads"},{"name":"Produkt-Updates"}]}')
@@ -381,6 +383,9 @@ docker run --rm --entrypoint /usr/bin/php "$IMG" -r '
   }' && pass "mailer API bridges loadable" || fail "mailer bridges"
 init_out="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)"
 grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && pass "plugins registered with Mautic" || { echo "$init_out" | tail -5; fail "plugin reload"; }
+[[ "$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT use_owner_as_mailer FROM emails WHERE id = $pref_eid" 2>/dev/null)" == 1 ]] \
+  && grep -q '"mailer is owner" on for' <<<"$init_out" \
+  && pass "mailer is owner: emails created through the API get the configured setting" || { echo "$init_out" | grep -i owner; fail "mailer is owner"; }
 
 v="$(docker run --rm "$IMG" version)"
 pass "mautic version $v"
