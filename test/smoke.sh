@@ -381,11 +381,13 @@ docker run --rm --entrypoint /usr/bin/php "$IMG" -r '
     $class = "Symfony\\Component\\Mailer\\Bridge\\".$c;
     if (!class_exists($class)) { fwrite(STDERR, "missing $class\n"); exit(1); }
   }' && pass "mailer API bridges loadable" || fail "mailer bridges"
+# An email without its own "mailer is owner" setting (as from older API clients).
+docker exec "$run_id-db" mariadb -umautic -pmautic mautic -e "UPDATE emails SET use_owner_as_mailer = NULL WHERE id = $pref_eid" 2>/dev/null
 init_out="$(docker run --rm --network "$net" "${hardening[@]}" "${env[@]}" "$IMG" init 2>&1)"
 grep -qiE 'plugins? (were|was) (installed|updated)|0 updated' <<<"$init_out" && pass "plugins registered with Mautic" || { echo "$init_out" | tail -5; fail "plugin reload"; }
 [[ "$(docker exec "$run_id-db" mariadb -umautic -pmautic mautic -N -e "SELECT use_owner_as_mailer FROM emails WHERE id = $pref_eid" 2>/dev/null)" == 1 ]] \
   && grep -q '"mailer is owner" on for' <<<"$init_out" \
-  && pass "mailer is owner: emails created through the API get the configured setting" || { echo "$init_out" | grep -i owner; fail "mailer is owner"; }
+  && pass "mailer is owner: init gives emails without their own setting the Helm value" || { echo "$init_out" | tail -5; fail "mailer is owner"; }
 
 v="$(docker run --rm "$IMG" version)"
 pass "mautic version $v"
