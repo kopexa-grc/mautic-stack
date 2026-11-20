@@ -19,6 +19,6 @@ symfony/mailjet-mailer:7.4.*
 # Our own bundles, developed in their own repositories and published on
 # Packagist (see docs/extensions.md).
 kopexa/mautic-oauth-bundle:0.5.0
-kopexa/mautic-mcp-bundle:0.9.0
+kopexa/mautic-mcp-bundle:0.10.0
 kopexa/mautic-postal-bundle:0.3.0
 kopexa/mautic-preferences-center:0.2.1
