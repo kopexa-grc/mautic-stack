@@ -71,10 +71,10 @@ registers dynamically. Nothing has to be configured in Mautic per client.
 | `list_email_topics` | `mcp:read` | Topics of the email preference center (Mautic categories); the email tools take `topic` (name or ID, `""` clears) and warn when an email has none |
 | `list_email_layouts` | `mcp:read` | Brand layouts of the installed themes (Kopexa): panels `hero`, `article`, `cards`, their elements (label, title, text, button, image, …) and placeholder images |
 | `create_email_from_layout` | `mcp:write` | New **unpublished** email in the brand theme from panels and elements: stored as MJML (**editable in Mautic's builder**) and as HTML for sending; header and footer added automatically; inline HTML sanitized, links https only |
-| `update_email_layout` | `mcp:write` | Replace the content (and subject) of an unpublished, never-sent email |
+| `update_email_layout` | `mcp:write` | Replace the content (and subject, preview text, topic) of an email in the brand theme; on a **live** email (published or sent) also `mcp:emails:publish`, `dryRun` shows `live_effects` |
 | `send_test_email` | `mcp:write` | Send a test of an email **to the signed-in user only** (sample or real contact for tokens), like *Send example* in Mautic |
 | `create_email_draft` | `mcp:write` | New **unpublished** email from raw HTML (code mode; prefer `create_email_from_layout`) |
-| `update_email_draft` | `mcp:write` | Change an unpublished, never-sent email (published or sent emails are refused) |
+| `update_email` | `mcp:write` | Change any email with all its settings: name, subject, HTML, plain text, preview text, segments, topic, language, sender name and address, reply-to (`""` clears). Drafts freely; on a **live** email (published or already sent) everything recipients get also needs `mcp:emails:publish` (renaming and adding a missing topic do not); `dryRun` lists the changes and `live_effects` |
 | `publish_email` | `mcp:emails:publish` (opt-in) | Publish or unpublish an email; `publishUp` schedules a segment email. **Publishing a segment email sends it.** `dryRun` shows `live_effects`: recipients and segments, or the campaigns that use a template email. Segment emails without `{unsubscribe_url}` are refused |
 | `delete_email` | `mcp:emails:delete` (opt-in) | Delete an unpublished email that no campaign uses (published, scheduled and campaign emails are refused, campaigns named); `dryRun` shows the statistics that are lost |
 | `list_campaign_step_types` | `mcp:read` | Available actions, decisions and conditions (including those of installed plugins) |
@@ -234,13 +234,14 @@ removed.
 
 | Action | Effect |
 |---|---|
-| Create or change an email | Saved **unpublished**. Published or already sent emails cannot be changed. A person reviews and publishes it in Mautic (each result contains its `url`), or the assistant with `publish_email` (below). Nothing is sent. |
+| Create or change an email | New emails are saved **unpublished**; drafts can be changed freely. A person reviews and publishes it in Mautic (each result contains its `url`), or the assistant with `publish_email` (below). Nothing is sent. |
 | Create a campaign, edit a campaign that is not published | Draft only. No contact enters it and nothing runs until a person publishes it. |
 | **Edit a running (published) campaign** | Only with the scope `mcp:campaigns:live` and if the instance allows it (see below). Then **live.** Mautic's scheduler (`mautic:campaigns:trigger`) executes added and changed steps for contacts reaching them. Email steps send to real recipients; webhook, push and similar steps reach external systems. Contacts already scheduled on a changed step keep their time but get the new content (for example, the email now set in the step). |
 | Create or update contacts | Saved immediately. Mautic's own rules apply (unique email, field types). Do-Not-Contact (unsubscribed, bounced) is never changed, so an assistant cannot re-subscribe anyone. |
 | **Add contacts to a segment** (`upsert_contacts` with `segmentIds`, `add_contacts_to_segment`) | **Can be live.** Running campaigns with this segment as source take the new members in with their next run; published segment emails of the segment are sent to them with the next broadcast run. The result lists both under `live_effects` (`running_campaigns`, `published_segment_emails`), also in a `dryRun`. New static segments from `create_segment` are used by nothing yet. |
 | Create a point action or trigger | Saved **unpublished**; nothing happens until a person publishes it. |
 | **Publish an email** (`publish_email`) | Only with the scope `mcp:emails:publish`. A **segment email is sent**: Mautic's broadcast job (`mautic:broadcasts:send`) mails every member of its segments who has not received it, except Do-Not-Contact and contacts who switched its topic off, and later new members. A template email is sent by running campaigns and forms that use it. Unpublishing stops further sends. |
+| **Change a published or sent email** (`update_email`, `update_email_layout`) | Only with the scope `mcp:emails:publish` for anything recipients get (content, sender, segments, a changed or removed topic); renaming it and adding a topic to an email without one only need `mcp:write`. **Live:** a published segment email goes out in its new version to segment members who have not received it yet; running campaigns and forms send the new version of a template email. Contacts who already received it keep their version, and its statistics then cover both. `dryRun` shows `live_effects` (pending recipients, campaigns). |
 | **Delete an email** (`delete_email`) | Only with the scope `mcp:emails:delete`, only unpublished emails that no campaign uses. Its statistics are deleted with it. |
 | Change a published point action | Live for new events: contacts get the new points from then on. Points already given stay. |
 | **Change a published point trigger** | Only with `mcp:campaigns:live` and `liveCampaignEdits` (the same locks as running campaigns). Contacts reaching the score from then on get the changed events; outbound events (emails, campaign, integration push) are listed in `live_effects`. With *trigger for existing contacts* enabled, Mautic runs new events right away for contacts already at the score (`new_events_run_now_for`). |
@@ -384,7 +385,7 @@ Three layers, all of which must allow an action:
    - `mcp:read`
    - `mcp:write` (email and campaign drafts, campaign flows, point groups, actions and triggers, stages, projects)
    - `mcp:contacts:write` (contacts, companies, custom fields, segments, contact points and stages)
-   - `mcp:emails:publish` (opt-in: publish and unpublish emails; publishing a segment email sends it)
+   - `mcp:emails:publish` (opt-in: publish and unpublish emails, publishing a segment email sends it; change published or sent emails, live for their next recipients)
    - `mcp:emails:delete` (opt-in: delete unpublished emails no campaign uses)
    - `mcp:campaigns:live` (opt-in, needed for changes to running campaigns and published point triggers)
 
